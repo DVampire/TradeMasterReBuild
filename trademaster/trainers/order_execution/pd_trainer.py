@@ -26,17 +26,19 @@ class OrderExecutionPDTrainer(Trainer):
         if not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir)
 
+        self.all_model_path = os.path.join(self.work_dir, "all_model")
+        self.best_model_path = os.path.join(self.work_dir, "best_model")
+        if not os.path.exists(self.all_model_path):
+            os.makedirs(self.all_model_path)
+        if not os.path.exists(self.best_model_path):
+            os.makedirs(self.best_model_path)
+
     def train_and_valid(self):
-        all_model_path = os.path.join(self.work_dir, "all_model")
-        best_model_path = os.path.join(self.work_dir, "best_model")
-        if not os.path.exists(all_model_path):
-            os.makedirs(all_model_path)
-        if not os.path.exists(best_model_path):
-            os.makedirs(best_model_path)
 
         valid_score_list = []
         valid_number = 0
         for i in range(self.epochs):
+            print('<<<<<<<<<Episode: %s' % i)
             s, info = self.train_environment.reset()
             # train the teacher first
             done = False
@@ -78,7 +80,7 @@ class OrderExecutionPDTrainer(Trainer):
 
                 if self.agent.step_student % self.agent.save_freq == 1:
                     torch.save(
-                        self.agent.student_ppo.old_net, os.path.join(all_model_path,"{}_net.pth".format(valid_number)))
+                        self.agent.student_ppo.old_net, os.path.join(self.all_model_path,"{}_net.pth".format(valid_number)))
                     valid_number += 1
                     s, info = self.valid_environment.reset()
                     done = False
@@ -97,11 +99,13 @@ class OrderExecutionPDTrainer(Trainer):
                     valid_score_list.append(self.valid_environment.money_sold)
                     break
         index = valid_score_list.index(max(valid_score_list))
-        net_path = os.path.join(all_model_path, "{}_net.pth".format(index))
+        net_path = os.path.join(self.all_model_path, "{}_net.pth".format(index))
         self.agent.student_ppo.old_net = torch.load(net_path)
-        torch.save(self.agent.student_ppo.old_net, os.path.join(best_model_path,"best_net.pth"))
+        torch.save(self.agent.student_ppo.old_net, os.path.join(self.best_model_path,"best_net.pth"))
 
     def test(self):
+        self.agent.student_ppo.old_net = torch.load(os.path.join(self.best_model_path,"best_net.pth"))
+
         s, info = self.test_environment.reset()
         action_list = []
         reward_list = []

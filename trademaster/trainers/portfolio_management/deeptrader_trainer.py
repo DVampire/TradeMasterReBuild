@@ -65,6 +65,12 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
         self.work_dir = os.path.join(ROOT, self.work_dir)
         if not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir)
+        self.all_model_path = os.path.join(self.work_dir, "all_model")
+        best_model_path = os.path.join(self.work_dir, "best_model")
+        if not os.path.exists(self.all_model_path):
+            os.makedirs(self.all_model_path)
+        if not os.path.exists(self.best_model_path):
+            os.makedirs(self.best_model_path)
 
     def train_and_valid(self):
 
@@ -112,21 +118,15 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
                 j = j + 1
                 if j % 100 == 10:
                     self.agent.learn()
-            all_model_path = os.path.join(self.work_dir, "all_model")
-            best_model_path = os.path.join(self.work_dir, "best_model")
-            if not os.path.exists(all_model_path):
-                os.makedirs(all_model_path)
-            if not os.path.exists(best_model_path):
-                os.makedirs(best_model_path)
             torch.save(
                 self.agent.act_net,
-                os.path.join(all_model_path, "act_net_num_epoch_{}.pth".format(i)))
+                os.path.join(self.all_model_path, "act_net_num_epoch_{}.pth".format(i)))
             torch.save(
                 self.agent.cri_net,
-                os.path.join(all_model_path, "cri_net_num_epoch_{}.pth".format(i)))
+                os.path.join(self.all_model_path, "cri_net_num_epoch_{}.pth".format(i)))
             torch.save(
                 self.agent.market_net,
-                os.path.join(all_model_path, "market_policy_num_epoch_{}.pth".format(i)))
+                os.path.join(self.all_model_path, "market_policy_num_epoch_{}.pth".format(i)))
             print("validating")
             s = self.valid_environment.reset()
             done = False
@@ -150,22 +150,26 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
                 rewards += reward
             rewards_list.append(rewards)
         index = rewards_list.index(np.max(rewards_list))
-        act_net_model_path = os.path.join(all_model_path, "act_net_num_epoch_{}.pth".format(
+        act_net_model_path = os.path.join(self.all_model_path, "act_net_num_epoch_{}.pth".format(
             index))
-        cri_net_model_path = os.path.join(all_model_path, "cri_net_num_epoch_{}.pth".format(
+        cri_net_model_path = os.path.join(self.all_model_path, "cri_net_num_epoch_{}.pth".format(
             index))
-        market_net_model_path = os.path.join(all_model_path, "market_net_num_epoch_{}.pth".format(
+        market_net_model_path = os.path.join(self.all_model_path, "market_net_num_epoch_{}.pth".format(
             index))
 
         self.agent.act_net = torch.load(act_net_model_path)
         self.agent.cri_net = torch.load(cri_net_model_path)
         self.agent.market_net = torch.load(market_net_model_path)
 
-        torch.save(self.agent.act_net, os.path.join(best_model_path, "act_net.pth"))
-        torch.save(self.agent.cri_net, os.path.join(best_model_path, "cri_net.pth"))
-        torch.save(self.agent.market_net, os.path.join(best_model_path, "market_net.pth"))
+        torch.save(self.agent.act_net, os.path.join(self.best_model_path, "act_net.pth"))
+        torch.save(self.agent.cri_net, os.path.join(self.best_model_path, "cri_net.pth"))
+        torch.save(self.agent.market_net, os.path.join(self.best_model_path, "market_net.pth"))
 
     def test(self):
+        self.agent.act_net = torch.load(os.path.join(self.best_model_path, "act_net.pth"))
+        self.agent.cri_net = torch.load(os.path.join(self.best_model_path, "cri_net.pth"))
+        self.agent.market_net = torch.load(os.path.join(self.best_model_path, "market_net.pth"))
+
         s = self.test_environment.reset()
         done = False
         while not done:
@@ -185,5 +189,4 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
         df = pd.DataFrame()
         df["daily_return"] = daily_return
         df["total assets"] = assets
-        print(df)
         df.to_csv(os.path.join(self.work_dir, "test_result.csv"), index=False)

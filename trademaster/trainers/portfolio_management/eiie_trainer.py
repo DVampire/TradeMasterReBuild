@@ -29,14 +29,14 @@ class PortfolioManagementEIIETrainer(Trainer):
         if not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir)
 
-    def train_and_valid(self):
+        self.all_model_path = os.path.join(self.work_dir, "all_model")
+        self.best_model_path = os.path.join(self.work_dir, "best_model")
+        if not os.path.exists(self.all_model_path):
+            os.makedirs(self.all_model_path)
+        if not os.path.exists(self.best_model_path):
+            os.makedirs(self.best_model_path)
 
-        all_model_path = os.path.join(self.work_dir, "all_model")
-        best_model_path = os.path.join(self.work_dir, "best_model")
-        if not os.path.exists(all_model_path):
-            os.makedirs(all_model_path)
-        if not os.path.exists(best_model_path):
-            os.makedirs(best_model_path)
+    def train_and_valid(self):
 
         rewards_list = []
         for i in range(self.epochs):
@@ -59,9 +59,9 @@ class PortfolioManagementEIIETrainer(Trainer):
                     self.agent.learn()
 
             torch.save(self.agent.act_net,
-                       os.path.join(all_model_path, "actor_num_epoch_{}.pth".format(i)))
+                       os.path.join(self.all_model_path, "actor_num_epoch_{}.pth".format(i)))
             torch.save(self.agent.cri_net,
-                       os.path.join(all_model_path, "critic_num_epoch_{}.pth".format(i)))
+                       os.path.join(self.all_model_path, "critic_num_epoch_{}.pth".format(i)))
             s = self.valid_environment.reset()
             done = False
             rewards = 0
@@ -73,14 +73,16 @@ class PortfolioManagementEIIETrainer(Trainer):
                 rewards = rewards + reward
             rewards_list.append(rewards)
         index = rewards_list.index(np.max(rewards_list))
-        actor_model_path = os.path.join(all_model_path, "actor_num_epoch_{}.pth".format(index))
-        critic_model_path = os.path.join(all_model_path, "critic_num_epoch_{}.pth".format(index))
+        actor_model_path = os.path.join(self.all_model_path, "actor_num_epoch_{}.pth".format(index))
+        critic_model_path = os.path.join(self.all_model_path, "critic_num_epoch_{}.pth".format(index))
         self.agent.act_net = torch.load(actor_model_path)
         self.agent.cri_net = torch.load(critic_model_path)
-        torch.save(self.agent.act_net, os.path.join(best_model_path, "actor.pth"))
-        torch.save(self.agent.cri_net, os.path.join(best_model_path, "critic.pth"))
+        torch.save(self.agent.act_net, os.path.join(self.best_model_path, "actor.pth"))
+        torch.save(self.agent.cri_net, os.path.join(self.best_model_path, "critic.pth"))
 
     def test(self):
+        self.agent.act_net = torch.load(os.path.join(self.best_model_path, "actor.pth"))
+        self.agent.cri_net = torch.load(os.path.join(self.best_model_path, "critic.pth"))
         s = self.test_environment.reset()
         done = False
         while not done:

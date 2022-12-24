@@ -26,17 +26,18 @@ class OrderExecutionETEOTrainer(Trainer):
         if not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir)
 
-        all_model_path = os.path.join(self.work_dir, "all_model")
-        best_model_path = os.path.join(self.work_dir, "best_model")
-        if not os.path.exists(all_model_path):
-            os.makedirs(all_model_path)
-        if not os.path.exists(best_model_path):
-            os.makedirs(best_model_path)
+        self.all_model_path = os.path.join(self.work_dir, "all_model")
+        self.best_model_path = os.path.join(self.work_dir, "best_model")
+        if not os.path.exists(self.all_model_path):
+            os.makedirs(self.all_model_path)
+        if not os.path.exists(self.best_model_path):
+            os.makedirs(self.best_model_path)
 
     def train_and_valid(self):
         reward_list = []
 
         for i in range(self.epochs):
+            print('<<<<<<<<<Episode: %s' % i)
             num_epoch = i
             stacked_state = []
             s = self.train_environment.reset()
@@ -81,7 +82,6 @@ class OrderExecutionETEOTrainer(Trainer):
                     self.agent.previous_rewards = []
                     self.agent.dones = []
 
-
             torch.save(self.agent.act_net, os.path.join(self.all_model_path, "policy_state_value_net_{}.pth".format(num_epoch)))
             stacked_state = []
             s = self.valid_environment.reset()
@@ -105,6 +105,7 @@ class OrderExecutionETEOTrainer(Trainer):
         torch.save(self.agent.cri_net, os.path.join(self.best_model_path,"policy_state_value_net.pth"))
 
     def test(self):
+        self.agent.cri_net = torch.load(os.path.join(self.best_model_path,"policy_state_value_net.pth"))
         stacked_state = []
         s = self.test_environment.reset()
         stacked_state.append(s)

@@ -57,18 +57,18 @@ class PortfolioManagementTrainer(Trainer):
         self.configs["env_config"] = dict(dataset = self.dataset, task = "train")
         register_env("portfolio_management", env_creator)
 
+        self.all_model_path = os.path.join(self.work_dir, "all_model")
+        self.best_model_path = os.path.join(self.work_dir, "best_model")
+        if not os.path.exists(self.all_model_path):
+            os.makedirs(self.all_model_path)
+        if not os.path.exists(self.best_model_path):
+            os.makedirs(self.best_model_path)
+
     def train_and_valid(self):
         self.sharpes = []
         self.checkpoints = []
 
         self.trainer = self.trainer_name(env="portfolio_management", config=self.configs)
-
-        all_model_path = os.path.join(self.work_dir, "all_model")
-        best_model_path = os.path.join(self.work_dir, "best_model")
-        if not os.path.exists(all_model_path):
-            os.makedirs(all_model_path)
-        if not os.path.exists(best_model_path):
-            os.makedirs(best_model_path)
 
         for i in range(self.epochs):
             self.trainer.train()
@@ -81,14 +81,15 @@ class PortfolioManagementTrainer(Trainer):
                 state, reward, done, information = self.valid_environment.step(
                     action)
             self.sharpes.append(information["sharpe_ratio"])
-            checkpoint = self.trainer.save(all_model_path)
+            checkpoint = self.trainer.save(self.all_model_path)
             self.checkpoints.append(checkpoint)
         self.loc = self.sharpes.index(max(self.sharpes))
         self.trainer.restore(self.checkpoints[self.loc])
-        self.trainer.save(best_model_path)
+        self.trainer.save(self.best_model_path)
         ray.shutdown()
 
     def test(self):
+        self.trainer.restore(self.best_model_path)
         config = dict(dataset=self.dataset, task="test")
         self.test_environment = env_creator(config)
         state = self.test_environment.reset()

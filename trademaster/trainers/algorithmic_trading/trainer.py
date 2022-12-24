@@ -62,11 +62,11 @@ class AlgorithmicTradingTrainer(Trainer):
 
         index = valid_score_list.index(np.max(valid_score_list))
         model_path = os.path.join(self.work_dir, "all_model", "num_epoch_{}.pth".format(index))
-        self.act_net = torch.load(model_path)
-        torch.save(self.act_net, os.path.join(self.best_model_path, "best_model.pth"))
+        self.agent.act_net = torch.load(model_path)
+        torch.save(self.agent.act_net, os.path.join(self.best_model_path, "best_model.pth"))
 
     def test(self):
-        self.act_net = torch.load(os.path.join(self.best_model_path, "best_model.pth"))
+        self.agent.act_net = torch.load(os.path.join(self.best_model_path, "best_model.pth"))
         s = self.test_environment.reset()
         done = False
         while not done:

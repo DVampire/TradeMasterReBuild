@@ -26,14 +26,14 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
         self.work_dir = os.path.join(ROOT, self.work_dir)
         if not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir)
+        self.all_model_path = os.path.join(self.work_dir, "all_model")
+        self.best_model_path = os.path.join(self.work_dir, "best_model")
+        if not os.path.exists(self.all_model_path):
+            os.makedirs(self.all_model_path)
+        if not os.path.exists(self.best_model_path):
+            os.makedirs(self.best_model_path)
 
     def train_and_valid(self):
-        all_model_path = os.path.join(self.work_dir, "all_model")
-        best_model_path = os.path.join(self.work_dir, "best_model")
-        if not os.path.exists(all_model_path):
-            os.makedirs(all_model_path)
-        if not os.path.exists(best_model_path):
-            os.makedirs(best_model_path)
 
         rewards_list = []
         for i in range(self.epochs):
@@ -48,7 +48,7 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
                 self.agent.act_net.rewards.append(reward)
 
             self.agent.learn()
-            model_path = os.path.join(all_model_path, "num_epoch_" + str(i + 1))
+            model_path = os.path.join(self.all_model_path, "num_epoch_" + str(i + 1))
             if not os.path.exists(model_path):
                 os.makedirs(model_path)
             model_path = os.path.join(model_path, "policy_gradient.pth")
@@ -64,11 +64,11 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
             rewards_list.append(rewards)
 
         best_model_index = rewards_list.index(max(rewards_list))
-        policy = torch.load(
-            os.path.join(all_model_path, "num_epoch_" + str(best_model_index + 1), "policy_gradient.pth"))
-        torch.save(policy, os.path.join(best_model_path, "policy_gradient.pth"))
+        self.agent.act_net = torch.load(os.path.join(self.all_model_path, "num_epoch_" + str(best_model_index + 1), "policy_gradient.pth"))
+        torch.save(self.agent.act_net, os.path.join(self.best_model_path, "policy_gradient.pth"))
 
     def test(self):
+        self.agent.act_net = torch.load(os.path.join(self.best_model_path, "policy_gradient.pth"))
         state = self.test_environment.reset()
         done = False
         while not done:
