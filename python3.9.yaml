@@ -89,6 +89,7 @@ dependencies:
     - dm-tree==0.1.7
     - et-xmlfile==1.1.0
     - flask==2.2.2
+    - flask_cors
     - flatbuffers==22.12.6
     - fonttools==4.34.4
     - frozendict==2.3.4

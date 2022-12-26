@@ -15,6 +15,7 @@ from flask import Flask, request, jsonify
 from mmcv import Config
 
 from trademaster.utils import replace_cfg_vals
+from flask_cors import CORS
 
 tz = pytz.timezone('Asia/Shanghai')
 
@@ -22,6 +23,7 @@ ROOT = str(pathlib.Path(__file__).resolve().parents[1])
 sys.path.append(ROOT)
 
 app = Flask(__name__)
+CORS(app, resources={r"/TradeMaster/*": {"origins": "*"}})
 
 
 def run_cmd(cmd):

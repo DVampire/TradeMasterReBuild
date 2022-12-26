@@ -36,7 +36,7 @@ def test_train(request_url):
             "agent_name": "algorithmic_trading:dqn",
         }
         data = json.dumps(data)
-        response_return = requests.post(request_url, data=data, headers=headers).json()
+        response_return = requests.post(request_url, data=data, headers=headers).text
         return response_return
     except Exception as e:
         print(e)
@@ -50,7 +50,7 @@ def test_train_status(request_url, session_id):
             "session_id":session_id
         }
         data = json.dumps(data)
-        response_return = requests.post(request_url, data=data, headers=headers).json()
+        response_return = requests.post(request_url, data=data, headers=headers).text
         return response_return
     except Exception as e:
         print(e)
@@ -64,7 +64,7 @@ def test_test(request_url, session_id):
             "session_id":session_id
         }
         data = json.dumps(data)
-        response_return = requests.post(request_url, data=data, headers=headers).json()
+        response_return = requests.post(request_url, data=data, headers=headers).text
         return response_return
     except Exception as e:
         print(e)
@@ -78,7 +78,7 @@ def test_test_status(request_url, session_id):
             "session_id":session_id
         }
         data = json.dumps(data)
-        response_return = requests.post(request_url, data=data, headers=headers).json()
+        response_return = requests.post(request_url, data=data, headers=headers).text
         return response_return
     except Exception as e:
         print(e)
@@ -87,8 +87,8 @@ def test_test_status(request_url, session_id):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-ht', '--host', type=str, default="127.0.0.1", help='request host')
-    parser.add_argument('-pt', '--port', type=int, default=8080, help='request port')
+    parser.add_argument('-ht', '--host', type=str, default="20a6p05819.goho.co", help='request host')
+    parser.add_argument('-pt', '--port', type=int, default=36712, help='request port')
     parser.add_argument('-tn', '--turn', type=int, default=1, help='request turn')
 
     args = parser.parse_args()
@@ -103,10 +103,10 @@ if __name__ == "__main__":
 
     time.sleep(10)
 
-    session_id = response_return["session_id"]
-    url = "http://{}:{}/TradeMaster/train_status".format(host, port)
-    response_return = test_train_status(url, session_id)
-    print(response_return)
+    # session_id = response_return["session_id"]
+    # url = "http://{}:{}/TradeMaster/train_status".format(host, port)
+    # response_return = test_train_status(url, session_id)
+    # print(response_return)
     #
     # time.sleep(100)
     #
