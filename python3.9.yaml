@@ -87,7 +87,6 @@ dependencies:
     - distlib==0.3.6
     - django==4.1.4
     - dm-tree==0.1.7
-    - en-core-web-sm==3.0.0
     - et-xmlfile==1.1.0
     - flask==2.2.2
     - flatbuffers==22.12.6
@@ -184,9 +183,6 @@ dependencies:
     - tifffile==2022.5.4
     - timm==0.4.9
     - toolz==0.9.0
-    - torch==1.10.1+cu113
-    - torchaudio==0.10.1+cu113
-    - torchvision==0.11.2+cu113
     - typer==0.3.2
     - typing-extensions==4.3.0
     - tzdata==2022.7
