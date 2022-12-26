@@ -9,6 +9,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
+import pandas as pd
 import pytz
 from flask import Flask, request, jsonify
 from mmcv import Config
@@ -136,6 +137,8 @@ class Server():
             optimizer_name = request_json.get("optimizer_name")
             loss_name = request_json.get("loss_name")
             agent_name = request_json.get("agent_name").split(":")[-1]
+            train_start_date = request_json.get("train_start_date")
+            test_start_date = request_json.get("test_start_date")
             session_id = str(uuid.uuid1())
 
             cfg_path = os.path.join(ROOT, "configs", task_name,
@@ -152,6 +155,31 @@ class Server():
                                                    f"{task_name}_{dataset_name}_{agent_name}_{agent_name}_{optimizer_name}_{loss_name}")
             cfg.trainer.work_dir = cfg.work_dir
 
+            # build dataset
+            data = pd.read_csv(os.path.join(ROOT, cfg.data.data_path, "data.csv"), index_col=0)
+            if test_start_date > train_start_date:
+                train_and_valid_date = data[(data["date"] >= train_start_date) & (data["date"] < test_start_date)]
+                indexs = range(len(train_and_valid_date.index.unique()))
+
+                train_indexs = indexs[:int(len(indexs) * 0.8)]
+                val_indexs = indexs[int(len(indexs) * 0.8):]
+
+                train_data = data.loc[train_indexs, :]
+                train_data.index = train_data.index - train_data.index.min()
+
+                val_data = data.loc[val_indexs, :]
+                val_data.index = val_data.index - val_data.index.min()
+
+                test_data = data[data["date"] >= test_start_date]
+                test_data.index = test_data.index - test_data.index.min()
+
+                train_data.to_csv(os.path.join(work_dir, "train.csv"))
+                cfg.data.train_path = "{}/{}".format(cfg.work_dir, "train.csv")
+                val_data.to_csv(os.path.join(work_dir, "valid.csv"))
+                cfg.data.valid_path = "{}/{}".format(cfg.work_dir, "valid.csv")
+                test_data.to_csv(os.path.join(work_dir, "test.csv"))
+                cfg.data.test_path = "{}/{}".format(cfg.work_dir, "test.csv")
+
             cfg_path = os.path.join(work_dir, osp.basename(cfg_path))
             cfg.dump(cfg_path)
             logger.info(cfg)
@@ -159,16 +187,17 @@ class Server():
             log_path = os.path.join(work_dir, "train_log.txt")
 
             self.sessions = self.dump_sessions({session_id: {
-                "work_dir":work_dir,
+                "work_dir": work_dir,
                 "cfg_path": cfg_path,
-                "script_path":train_script_path,
+                "script_path": train_script_path,
                 "train_log_path": log_path,
-                "test_log_path":os.path.join(os.path.dirname(log_path), "test_log.txt")
+                "test_log_path": os.path.join(os.path.dirname(log_path), "test_log.txt")
             }})
 
-            cmd = "conda activate python3.9 && nohup python -u {} --config {} --task_name train > {} 2>&1 &".format(train_script_path,
-                                                                                                  cfg_path,
-                                                                                                  log_path)
+            cmd = "conda activate python3.9 && nohup python -u {} --config {} --task_name train > {} 2>&1 &".format(
+                train_script_path,
+                cfg_path,
+                log_path)
             executor.submit(run_cmd, cmd)
             logger.info(cmd)
 

@@ -25,7 +25,7 @@ def test_getParameters(request_url):
         "Content-Type":"application/json"
     }
     try:
-        response_return = requests.get(request_url,headers = headers).json()
+        response_return = requests.get(request_url,headers = headers).text
         print(response_return)
     except Exception as e:
         print(e)
@@ -34,8 +34,8 @@ def test_getParameters(request_url):
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-ht','--host', type= str, default="10.100.83.77", help='request host')
-    parser.add_argument('-pt','--port', type= int , default=8080, help='request port')
+    parser.add_argument('-ht','--host', type= str, default="119.28.134.35", help='request host')
+    parser.add_argument('-pt','--port', type= int , default=443, help='request port')
     parser.add_argument('-tn','--turn', type = int, default=1, help='request turn')
 
     args = parser.parse_args()

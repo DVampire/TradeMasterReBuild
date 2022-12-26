@@ -29,6 +29,8 @@ def test_train(request_url):
         data = {
             "task_name": "algorithmic_trading",
             "dataset_name": "algorithmic_trading:BTC",
+            "train_start_date":"2017-01-01",
+            "test_start_date":"2019-12-31",
             "optimizer_name": "adam",
             "loss_name": "mse",
             "agent_name": "algorithmic_trading:dqn",
