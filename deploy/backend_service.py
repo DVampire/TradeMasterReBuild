@@ -65,7 +65,7 @@ class Server():
                              "portfolio_management:dj30",
                              "portfolio_management:exchange"],
             "optimizer_name": ["adam", "adaw"],
-            "loss_name": ["mae", "mse"],
+            "loss_name": ["mse","mae"],
             "agent_name": [
                 "algorithmic_trading:dqn",
                 "order_execution:eteo",
@@ -347,37 +347,37 @@ SERVER = Server()
 HEALTHCHECK = HealthCheck()
 
 
-@app.route("/TradeMaster/getParameters", methods=["GET"])
+@app.route("/api/TradeMaster/getParameters", methods=["GET"])
 def getParameters():
     res = SERVER.get_parameters(request)
     return res
 
 
-@app.route("/TradeMaster/train", methods=["POST"])
-def start():
+@app.route("/api/TradeMaster/train", methods=["POST"])
+def train():
     res = SERVER.train(request)
     return res
 
 
-@app.route("/TradeMaster/train_status", methods=["POST"])
-def start_status():
+@app.route("/api/TradeMaster/train_status", methods=["POST"])
+def train_status():
     res = SERVER.train_status(request)
     return res
 
 
-@app.route("/TradeMaster/test", methods=["POST"])
+@app.route("/api/TradeMaster/test", methods=["POST"])
 def test():
     res = SERVER.test(request)
     return res
 
 
-@app.route("/TradeMaster/test_status", methods=["POST"])
+@app.route("/api/TradeMaster/test_status", methods=["POST"])
 def test_status():
     res = SERVER.test_status(request)
     return res
 
 
-@app.route("/TradeMaster/healthcheck", methods=["GET"])
+@app.route("/api/TradeMaster/healthcheck", methods=["GET"])
 def health_check():
     res = HEALTHCHECK.run(request)
     return res
