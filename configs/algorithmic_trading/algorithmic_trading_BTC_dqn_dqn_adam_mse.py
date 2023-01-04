@@ -23,6 +23,7 @@ data = dict(
     train_path='data/algorithmic_trading/BTC/train.csv',
     valid_path='data/algorithmic_trading/BTC/valid.csv',
     test_path='data/algorithmic_trading/BTC/test.csv',
+    test_style_path='data/algorithmic_trading/BTC/test_labeled_3_24.csv',
     tech_indicator_list=[
         'high', 'low', 'open', 'close', 'adjcp', 'zopen', 'zhigh', 'zlow',
         'zadjcp', 'zclose', 'zd_5', 'zd_10', 'zd_15', 'zd_20', 'zd_25', 'zd_30'
@@ -32,7 +33,8 @@ data = dict(
     future_weights=0.2,
     initial_amount=100000,
     max_volume=1,
-    transaction_cost_pct=0.001)
+    transaction_cost_pct=0.001,
+    test_style=0)
 environment = dict(type='AlgorithmicTradingEnvironment')
 act_net = dict(type='QNet', n_state=82, n_action=3, hidden_nodes=256)
 cri_net = dict(type='QNet', n_state=82, n_action=3, hidden_nodes=256)

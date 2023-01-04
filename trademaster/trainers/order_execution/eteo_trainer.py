@@ -19,6 +19,7 @@ class OrderExecutionETEOTrainer(Trainer):
         self.train_environment = get_attr(kwargs, "train_environment", None)
         self.valid_environment = get_attr(kwargs, "valid_environment", None)
         self.test_environment = get_attr(kwargs, "test_environment", None)
+        self.test_style_environment=get_attr_style(kwargs, "test_style_environment", None)
         self.state_length = self.train_environment.state_length
         self.agent = get_attr(kwargs, "agent", None)
         self.work_dir = get_attr(kwargs, "work_dir", None)
@@ -121,3 +122,27 @@ class OrderExecutionETEOTrainer(Trainer):
             stacked_state.append(s_new)
         result = np.array(self.test_environment.portfolio_value_history)
         np.save(os.path.join(self.work_dir,"result.npy"), result)
+
+    def test_style(self, style):
+        # style encoding: 0-bear 1-stag 2-bull
+        self.agent.cri_net = torch.load(os.path.join(self.best_model_path,"policy_state_value_net.pth"))
+        print('running on ' + str(len(self.test_style_env_instances)) + ' data slices')
+
+        for i in range(len(self.test_style_env_instances)):
+            s = self.test_style_env_instances[i].reset()
+            done = False
+            while not done:
+                old_state = s
+                action = self.net(torch.from_numpy(s).float())
+                s, reward, done, _ = self.test_style_env_instances[i].step(
+                    action.detach().numpy())
+            df_return = self.test_style_env_instances[i].save_portfolio_return_memory()
+            df_assets = self.test_style_env_instances[i].save_asset_memory()
+            assets = df_assets["total assets"].values
+            daily_return = df_return.daily_return.values
+            df = pd.DataFrame()
+            df["daily_return"] = daily_return
+            df["total assets"] = assets
+            if not os.path.exists(self.result_path):
+                os.makedirs(self.result_path)
+            df.to_csv(self.result_path + "/style_" + str(style) + '_result_' + str(i) + ".csv")
