@@ -24,8 +24,7 @@ class OrderExecutionDataset(CustomDataset):
         self.test_style_path = osp.join(ROOT, get_attr(kwargs, "test_style_path", None))
         test_style = get_attr(kwargs, "test_style", None)
         if test_style != -1:
-            backward_num_day = get_attr(kwargs, "backward_num_day", None)
-            forward_num_day = get_attr(kwargs, "forward_num_day", None)
+            length_keeping = get_attr(kwargs, "length_keeping", None)
             self.test_style_paths = []
             data = pd.read_csv(self.test_style_path)
             # print(data)
@@ -40,7 +39,7 @@ class OrderExecutionDataset(CustomDataset):
                 data_temp = data.iloc[interval[0]:interval[1], :]
                 data_temp.index = index_by_tick_list[i]
                 data_temp.to_csv('temp/' + str(test_style) + '_' + str(i) + '.csv')
-                if max(index_by_tick_list[i]) + 1 <= backward_num_day + forward_num_day + 2:
+                if max(index_by_tick_list[i])+1<length_keeping+2:
                     print('The ' + str(i) + '_th segment length is less than the min length so it won\'t be tested')
                     continue
                 temp_path = 'temp/' + str(test_style) + '_' + str(i) + '.csv'
