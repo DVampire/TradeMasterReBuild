@@ -25,8 +25,8 @@ class AlgorithmicTradingDataset(CustomDataset):
         self.test_style_path=osp.join(ROOT, get_attr(kwargs, "test_style_path", None))
         test_style=get_attr(kwargs, "test_style", None)
         if test_style!=-1:
-            backward_num_day=osp.join(ROOT, get_attr(kwargs, "backward_num_day", None))
-            forward_num_day=osp.join(ROOT, get_attr(kwargs, "forward_num_day", None))
+            backward_num_day= get_attr(kwargs, "backward_num_day", None)
+            forward_num_day=get_attr(kwargs, "forward_num_day", None)
             self.test_style_paths=[]
             data = pd.read_csv(self.test_style_path)
             # print(data)
