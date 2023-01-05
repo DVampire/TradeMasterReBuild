@@ -19,6 +19,7 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
+from Collections import Counter
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
@@ -100,8 +101,11 @@ def test_eteo():
     elif task_name.startswith("test"):
         trainer.test()
     elif task_name.startswith("style_test"):
+        reward_list=[]
         for trainer in trainers:
-            trainer.test()
+            reward_list.append(trainer.test())
+        print('The win rate all this regime is:')
+        print(Counter(reward_list))
 
 
 

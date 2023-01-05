@@ -118,5 +118,8 @@ class OrderExecutionETEOTrainer(Trainer):
             s_new, reward, done, _ = self.test_environment.step(action)
             stacked_state.pop(0)
             stacked_state.append(s_new)
+            if done:
+                final_reward=reward
         result = np.array(self.test_environment.portfolio_value_history)
         np.save(os.path.join(self.work_dir,"result.npy"), result)
+        return final_reward
