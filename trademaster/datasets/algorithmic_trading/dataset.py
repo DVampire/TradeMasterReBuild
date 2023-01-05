@@ -20,7 +20,7 @@ class AlgorithmicTradingDataset(CustomDataset):
         self.train_path = osp.join(ROOT, get_attr(kwargs, "train_path", None))
         self.valid_path = osp.join(ROOT, get_attr(kwargs, "valid_path", None))
         self.test_path = osp.join(ROOT, get_attr(kwargs, "test_path", None))
-        if test_style!=-1:
+        if self.kwargs.test_style!=-1:
             self.test_style_paths=[]
             data = pd.read_csv(self.test_path)
             # data['index_by_tick']=data.index
