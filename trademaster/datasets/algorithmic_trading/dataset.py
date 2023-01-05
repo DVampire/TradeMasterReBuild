@@ -32,7 +32,7 @@ class AlgorithmicTradingDataset(CustomDataset):
             # print(data)
             # data['index_by_tick']=data.index
             data = data.reset_index()
-            data = data.loc[data['label'] == test_style, :]
+            data = data.loc[data['label'] == int(test_style), :]
             intervals, index_by_tick_list = self.get_styled_intervals_and_gives_new_index(data)
             data.drop(columns=['index'], inplace=True)
             if not os.path.exists('temp'):
