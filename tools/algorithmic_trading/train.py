@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument("--config", default=osp.join(ROOT, "configs", "algorithmic_trading", "algorithmic_trading_BTC_dqn_dqn_adam_mse.py"),
                         help="download datasets config file path")
     parser.add_argument("--task_name", type=str, default="test")
+    parser.add_argument("--test_style", type=int, default=-1)
     args = parser.parse_args()
     return args
 
@@ -35,6 +36,8 @@ def test_dqn():
     task_name = args.task_name
 
     cfg = replace_cfg_vals(cfg)
+    # update test style
+    cfg.data.test_style.update(args.test_style)
     print(cfg)
 
     dataset = build_dataset(cfg)

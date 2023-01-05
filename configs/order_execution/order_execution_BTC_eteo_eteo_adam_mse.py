@@ -182,6 +182,7 @@ data = dict(
     state_length=10,
     target_order=1,
     initial_amount=100000,
+test_style=0
 )
 
 environment = dict(
