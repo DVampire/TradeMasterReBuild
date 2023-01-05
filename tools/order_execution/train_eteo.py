@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument("--config", default=osp.join(ROOT, "configs", "order_execution", "order_execution_BTC_eteo_eteo_adam_mse.py"),
                         help="download datasets config file path")
     parser.add_argument("--task_name", type=str, default="train")
-    parser.add_argument("--test_style", type=int, default=-1)
+    parser.add_argument("--test_style", type=str, default="-1")
     args = parser.parse_args()
     return args
 
