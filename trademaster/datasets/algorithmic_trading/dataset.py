@@ -25,6 +25,7 @@ class AlgorithmicTradingDataset(CustomDataset):
         if test_style!=-1:
             self.test_style_paths=[]
             data = pd.read_csv(self.test_path)
+            print(data)
             # data['index_by_tick']=data.index
             data = data.reset_index()
             data = data.loc[data['label'] == test_style, :]
