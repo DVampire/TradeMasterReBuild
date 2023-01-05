@@ -37,6 +37,7 @@ class AlgorithmicTradingDataset(CustomDataset):
             intervals, index_by_tick_list = self.get_styled_intervals_and_gives_new_index(data)
             data.drop(columns=['index'], inplace=True)
             temp_foler=osp.join(ROOT,os.path.dirname(self.test_style_path),'/style_slice')
+            print(os.path.dirname(self.test_style_path))
             print(temp_foler)
             if not os.path.exists(temp_foler):
                 os.makedirs(temp_foler)
