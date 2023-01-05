@@ -37,7 +37,7 @@ def test_dqn():
 
     cfg = replace_cfg_vals(cfg)
     # update test style
-    cfg.data.test_style.update(args.test_style)
+    cfg.data.update({'test_style':args.test_style})
     print(cfg)
 
     dataset = build_dataset(cfg)
