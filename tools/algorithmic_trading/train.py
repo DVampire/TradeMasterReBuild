@@ -102,7 +102,6 @@ def test_dqn():
     elif task_name.startswith("style_test"):
         for trainer in trainers:
             trainer.test()
-        shutil.rmtree('temp')
 
 
 if __name__ == '__main__':

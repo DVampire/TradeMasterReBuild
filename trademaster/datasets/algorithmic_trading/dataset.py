@@ -36,17 +36,18 @@ class AlgorithmicTradingDataset(CustomDataset):
             print(data)
             intervals, index_by_tick_list = self.get_styled_intervals_and_gives_new_index(data)
             data.drop(columns=['index'], inplace=True)
-            if not os.path.exists('temp'):
-                os.makedirs('temp')
+            temp_foler=osp.join(ROOT,'/style_data')
+            if not os.path.exists(temp_foler):
+                os.makedirs(temp_foler)
             for i, interval in enumerate(intervals):
                 data_temp = data.iloc[interval[0]:interval[1], :]
                 data_temp.index = index_by_tick_list[i]
-                data_temp.to_csv('temp/' + str(test_style) + '_' + str(i) + '.csv')
+                path=osp.join(ROOT,'/style_data/' + str(test_style) + '_' + str(i) + '.csv')
+                data_temp.to_csv(path)
                 if max(index_by_tick_list[i]) + 1 <= backward_num_day + forward_num_day + 2:
                     print('The ' + str(i) + '_th segment length is less than the min length so it won\'t be tested')
                     continue
-                temp_path='temp/' + str(test_style) + '_' + str(i) + '.csv'
-                self.test_style_paths.append(osp.join(ROOT, temp_path))
+                self.test_style_paths.append(path)
 
 
 
