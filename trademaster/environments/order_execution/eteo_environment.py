@@ -26,6 +26,8 @@ class OrderExecutionETEOEnvironment(Environments):
             self.df_path = get_attr(self.dataset, "train_path", None)
         elif self.task.startswith("valid"):
             self.df_path = get_attr(self.dataset, "valid_path", None)
+        elif self.task.startswith("test_style"):
+            self.df_paths = get_attr(self.dataset, "test_style_paths", None)
         else:
             self.df_path = get_attr(self.dataset, "test_path", None)
 
@@ -37,6 +39,11 @@ class OrderExecutionETEOEnvironment(Environments):
         self.portfolio_value_history = [self.initial_amount]
         self.portfolio_history = [self.portfolio]
         self.order_length = get_attr(kwargs, "length_keeping", 30)
+
+        if self.task.startswith("test_style"):
+            self.df = [pd.read_csv(path, index_col=0) for path in self.df_paths]
+        else:
+            self.df = pd.read_csv(self.df_path, index_col=0)
 
         self.df = pd.read_csv(self.df_path, index_col=0)
 

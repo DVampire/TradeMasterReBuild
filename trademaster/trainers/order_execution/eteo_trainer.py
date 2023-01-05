@@ -19,7 +19,6 @@ class OrderExecutionETEOTrainer(Trainer):
         self.train_environment = get_attr(kwargs, "train_environment", None)
         self.valid_environment = get_attr(kwargs, "valid_environment", None)
         self.test_environment = get_attr(kwargs, "test_environment", None)
-        self.test_style_environment=get_attr_style(kwargs, "test_style_environment", None)
         self.state_length = self.train_environment.state_length
         self.agent = get_attr(kwargs, "agent", None)
         self.work_dir = get_attr(kwargs, "work_dir", None)
