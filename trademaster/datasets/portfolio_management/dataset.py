@@ -8,6 +8,7 @@ from ..custom import CustomDataset
 from ..builder import DATASETS
 from trademaster.utils import get_attr
 import pandas as pd
+import os
 
 @DATASETS.register_module()
 class PortfolioManagementDataset(CustomDataset):
