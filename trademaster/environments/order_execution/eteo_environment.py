@@ -41,11 +41,10 @@ class OrderExecutionETEOEnvironment(Environments):
         self.order_length = get_attr(kwargs, "length_keeping", 30)
 
         if self.task.startswith("test_style"):
-            self.df = [pd.read_csv(path, index_col=0) for path in self.df_paths]
+            style_test_path = get_attr(kwargs, "style_test_path", None)
+            self.df = pd.read_csv(style_test_path, index_col=0)
         else:
             self.df = pd.read_csv(self.df_path, index_col=0)
-
-        self.df = pd.read_csv(self.df_path, index_col=0)
 
         self.time_frame = 0
         self.order_history = []

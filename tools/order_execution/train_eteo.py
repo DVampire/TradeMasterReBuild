@@ -19,7 +19,7 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
-import shutil
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
     parser.add_argument("--config", default=osp.join(ROOT, "configs", "order_execution", "order_execution_BTC_eteo_eteo_adam_mse.py"),
@@ -49,9 +49,9 @@ def test_eteo():
     valid_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="valid"))
     test_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="test"))
     if task_name.startswith("style_test"):
-        test_style_environments = []
-        for d in dataset:
-            test_style_environments.append(build_environment(cfg, default_args=dict(dataset=d, task="test_style")))
+        test_style_environments=[]
+        for i,path in enumerate(dataset.test_style_paths):
+            test_style_environments.append(build_environment(cfg, default_args=dict(dataset=dataset, task="test_style",style_test_path=path,task_index=i)))
 
     n_action = train_environment.action_space.shape[0]
     n_state = train_environment.observation_space.shape[0]
@@ -101,8 +101,7 @@ def test_eteo():
         trainer.test()
     elif task_name.startswith("style_test"):
         for trainer in trainers:
-            trainer.test_style()
-        shutil.rmtree('temp')
+            trainer.test()
 
 
 

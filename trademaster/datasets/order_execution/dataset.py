@@ -25,25 +25,24 @@ class OrderExecutionDataset(CustomDataset):
         test_style = get_attr(kwargs, "test_style", None)
         if test_style != -1:
             length_keeping = get_attr(kwargs, "length_keeping", None)
-            self.test_style_paths = []
+            self.test_style_paths=[]
             data = pd.read_csv(self.test_style_path)
-            # print(data)
-            # data['index_by_tick']=data.index
             data = data.reset_index()
-            data = data.loc[data['label'] == test_style, :]
+            data = data.loc[data['label'] == int(test_style), :]
             intervals, index_by_tick_list = self.get_styled_intervals_and_gives_new_index(data)
             data.drop(columns=['index'], inplace=True)
-            if not os.path.exists('temp'):
-                os.makedirs('temp')
+            temp_foler=osp.join(ROOT,os.path.dirname(self.test_style_path),'style_slice')
+            if not os.path.exists(temp_foler):
+                os.makedirs(temp_foler)
             for i, interval in enumerate(intervals):
                 data_temp = data.iloc[interval[0]:interval[1], :]
                 data_temp.index = index_by_tick_list[i]
-                data_temp.to_csv('temp/' + str(test_style) + '_' + str(i) + '.csv')
-                if max(index_by_tick_list[i])+1<length_keeping+2:
+                path=osp.join(ROOT,temp_foler,str(test_style) + '_' + str(i) + '.csv')
+                data_temp.to_csv(path)
+                if max(index_by_tick_list[i]) + 1 < length_keeping + 2:
                     print('The ' + str(i) + '_th segment length is less than the min length so it won\'t be tested')
                     continue
-                temp_path = 'temp/' + str(test_style) + '_' + str(i) + '.csv'
-                self.test_style_paths.append(osp.join(ROOT, temp_path))
+                self.test_style_paths.append(path)
 
         self.tech_indicator_list = get_attr(kwargs, "tech_indicator_list", [])
         self.backward_num_day = get_attr(kwargs, "backward_num_day", 5)

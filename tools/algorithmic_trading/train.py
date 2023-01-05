@@ -17,7 +17,7 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
-import shutil
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
