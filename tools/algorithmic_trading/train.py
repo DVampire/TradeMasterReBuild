@@ -82,7 +82,7 @@ def test_dqn():
     if task_name.startswith("style_test"):
         trainers=[]
         for env in test_style_environments:
-            trainers.append(trainer = build_trainer(cfg, default_args=dict(train_environment=train_environment,
+            trainers.append(build_trainer(cfg, default_args=dict(train_environment=train_environment,
                                                    valid_environment=valid_environment,
                                                    test_environment=env,
                                                    agent=agent,
