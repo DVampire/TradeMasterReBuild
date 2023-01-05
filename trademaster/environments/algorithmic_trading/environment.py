@@ -40,7 +40,7 @@ class AlgorithmicTradingEnvironment(Environments):
         self.future_weights = get_attr(self.dataset, "future_weights", 0.2)
 
         if self.task.startswith("test_style"):
-            self.style_test_path = get_attr(kwargs, "style_test_path", None)
+            style_test_path = get_attr(kwargs, "style_test_path", None)
             self.df = pd.read_csv(style_test_path, index_col=0)
         else:
             self.df = pd.read_csv(self.df_path, index_col=0)
