@@ -26,6 +26,8 @@ class AlgorithmicTradingEnvironment(Environments):
             self.df_path = get_attr(self.dataset, "train_path", None)
         elif self.task.startswith("valid"):
             self.df_path = get_attr(self.dataset, "valid_path", None)
+        elif self.task.startswith("test_style"):
+            self.df_paths = get_attr(self.dataset, "test_style_paths", None)
         else:
             self.df_path = get_attr(self.dataset, "test_path", None)
 
@@ -37,7 +39,12 @@ class AlgorithmicTradingEnvironment(Environments):
         self.max_volume = get_attr(self.dataset, "max_volume", 1)
         self.future_weights = get_attr(self.dataset, "future_weights", 0.2)
 
-        self.df = pd.read_csv(self.df_path, index_col=0)
+        if self.task.startswith("test_style"):
+            style_test_path = get_attr(kwargs, "style_test_path", None)
+            self.df = pd.read_csv(style_test_path, index_col=0)
+        else:
+            self.df = pd.read_csv(self.df_path, index_col=0)
+
 
         self.action_space = spaces.Discrete(2 * (self.max_volume) + 1)
         self.observation_space = spaces.Box(

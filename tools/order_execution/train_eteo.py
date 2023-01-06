@@ -19,12 +19,14 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
+from collections import Counter
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
     parser.add_argument("--config", default=osp.join(ROOT, "configs", "order_execution", "order_execution_BTC_eteo_eteo_adam_mse.py"),
                         help="download datasets config file path")
     parser.add_argument("--task_name", type=str, default="train")
+    parser.add_argument("--test_style", type=str, default="-1")
     args = parser.parse_args()
     return args
 
@@ -36,6 +38,8 @@ def test_eteo():
     task_name = args.task_name
 
     cfg = replace_cfg_vals(cfg)
+    # update test style
+    cfg.data.update({'test_style':args.test_style})
     print(cfg)
 
     dataset = build_dataset(cfg)
@@ -45,6 +49,10 @@ def test_eteo():
     train_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="train"))
     valid_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="valid"))
     test_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="test"))
+    if task_name.startswith("style_test"):
+        test_style_environments=[]
+        for i,path in enumerate(dataset.test_style_paths):
+            test_style_environments.append(build_environment(cfg, default_args=dict(dataset=dataset, task="test_style",style_test_path=path,task_index=i)))
 
     n_action = train_environment.action_space.shape[0]
     n_state = train_environment.observation_space.shape[0]
@@ -73,8 +81,16 @@ def test_eteo():
                                                optimizer=optimizer,
                                                loss=loss,
                                                device = device))
-
-    trainer = build_trainer(cfg, default_args=dict(train_environment=train_environment,
+    if task_name.startswith("style_test"):
+        trainers=[]
+        for env in test_style_environments:
+            trainers.append(build_trainer(cfg, default_args=dict(train_environment=train_environment,
+                                                   valid_environment=valid_environment,
+                                                   test_environment=env,
+                                                   agent=agent,
+                                                   device = device)))
+    else:
+        trainer = build_trainer(cfg, default_args=dict(train_environment=train_environment,
                                                    valid_environment=valid_environment,
                                                    test_environment=test_environment,
                                                    agent=agent,
@@ -84,6 +100,13 @@ def test_eteo():
         trainer.train_and_valid()
     elif task_name.startswith("test"):
         trainer.test()
+    elif task_name.startswith("style_test"):
+        reward_list=[]
+        for trainer in trainers:
+            reward_list.append(trainer.test())
+        print('The win rate all this regime is:')
+        print(Counter(reward_list))
+
 
 
 if __name__ == '__main__':

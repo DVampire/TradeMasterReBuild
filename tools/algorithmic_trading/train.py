@@ -18,11 +18,13 @@ from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
     parser.add_argument("--config", default=osp.join(ROOT, "configs", "algorithmic_trading", "algorithmic_trading_BTC_dqn_dqn_adam_mse.py"),
                         help="download datasets config file path")
     parser.add_argument("--task_name", type=str, default="test")
+    parser.add_argument("--test_style", type=str, default='-1')
     args = parser.parse_args()
     return args
 
@@ -34,6 +36,8 @@ def test_dqn():
     task_name = args.task_name
 
     cfg = replace_cfg_vals(cfg)
+    # update test style
+    cfg.data.update({'test_style':args.test_style})
     print(cfg)
 
     dataset = build_dataset(cfg)
@@ -43,6 +47,11 @@ def test_dqn():
     train_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="train"))
     valid_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="valid"))
     test_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="test"))
+    if task_name.startswith("style_test"):
+        test_style_environments=[]
+        for i,path in enumerate(dataset.test_style_paths):
+            test_style_environments.append(build_environment(cfg, default_args=dict(dataset=dataset, task="test_style",style_test_path=path,task_index=i)))
+
 
     n_action = train_environment.action_space.n
     n_state = train_environment.observation_space.shape[0]
@@ -61,6 +70,7 @@ def test_dqn():
     optimizer = build_optimizer(cfg, default_args=dict(params=act_net.parameters()))
     loss = build_loss(cfg)
 
+
     agent = build_agent(cfg, default_args=dict(n_action=n_action,
                                                n_state=n_state,
                                                act_net=act_net,
@@ -69,7 +79,17 @@ def test_dqn():
                                                loss=loss,
                                                device = device))
 
-    trainer = build_trainer(cfg, default_args=dict(train_environment=train_environment,
+    if task_name.startswith("style_test"):
+        trainers=[]
+        for env in test_style_environments:
+            trainers.append(build_trainer(cfg, default_args=dict(train_environment=train_environment,
+                                                   valid_environment=valid_environment,
+                                                   test_environment=env,
+                                                   agent=agent,
+                                                   device = device)))
+
+    else:
+        trainer = build_trainer(cfg, default_args=dict(train_environment=train_environment,
                                                    valid_environment=valid_environment,
                                                    test_environment=test_environment,
                                                    agent=agent,
@@ -79,6 +99,9 @@ def test_dqn():
         trainer.train_and_valid()
     elif task_name.startswith("test"):
         trainer.test()
+    elif task_name.startswith("style_test"):
+        for trainer in trainers:
+            trainer.test()
 
 
 if __name__ == '__main__':
