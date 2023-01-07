@@ -100,8 +100,10 @@ def test_dqn():
     elif task_name.startswith("test"):
         trainer.test()
     elif task_name.startswith("style_test"):
+        daily_return_list=[]
         for trainer in trainers:
-            trainer.test()
+            daily_return_list.extend(trainer.test())
+        print('win rate is: ',sum(r > 0 for r in daily_return_list)/len(daily_return_list))
 
 
 if __name__ == '__main__':
