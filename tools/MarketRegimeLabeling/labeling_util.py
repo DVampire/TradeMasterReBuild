@@ -296,8 +296,7 @@ class Labeler():
             ax.plot(x_seg,data['adjcp'].iloc[turning_points[i]:turning_points[i + 1]], color=colors[flag], label='market style ' + str(flag))
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
-        font = font_manager.FontProperties(family='Comic Sans MS',
-                                           weight='bold',
+        font = font_manager.FontProperties(weight='bold',
                                            style='normal', size=16)
         plt.legend(by_label.values(), by_label.keys(), prop=font)
         ax.set_title(tic + '_linear_regression_regime', fontsize=20)
