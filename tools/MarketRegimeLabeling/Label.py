@@ -35,9 +35,10 @@ if args.PM!='False':
     DJI = merged_data.loc[:, ['date', 'label']]
     test = pd.read_csv(args.PM, index_col=0)
     merged = test.merge(DJI, on='date')
-    merged.to_csv(output_path[:-4]+'_label_by_DJIindex_'+str(args.regime_number)+'_'+str(args.length_limit)+'.csv', index=False)
+    low, high = args.labeling_parameters
+    merged.to_csv(output_path[:-4]+'_label_by_DJIindex_'+str(args.regime_number)+'_'+str(args.length_limit)+'_'+str(low)+'_'+str(high)+'.csv', index=False)
 else:
-    merged_data.to_csv(output_path[:-4]+'_labeled_'+str(args.regime_number)+'_'+str(args.length_limit)+'.csv', index=False)
+    merged_data.to_csv(output_path[:-4]+'_labeled_'+str(args.regime_number)+'_'+str(args.length_limit)+'_'+str(low)+'_'+str(high)+'.csv', index=False)
 print('labeling done')
 print('plotting start')
 Labeler.plot(Labeler.tics,args.labeling_parameters,output_path)
