@@ -6,12 +6,13 @@ from pathlib import Path
 ROOT = str(Path(__file__).resolve().parents[2])
 sys.path.append(ROOT)
 import numpy as np
-from trademaster.utils import get_attr
+from trademaster.utils import get_attr, print_metrics
 import pandas as pd
 from ..custom import Environments
 from ..builder import ENVIRONMENTS
 from trademaster.pretrained import pretrained
 from gym import spaces
+from collections import OrderedDict
 
 @ENVIRONMENTS.register_module()
 class PortfolioManagementSARLEnvironment(Environments):
@@ -126,14 +127,18 @@ class PortfolioManagementSARLEnvironment(Environments):
 
         if self.terminal:
             tr, sharpe_ratio, vol, mdd, cr, sor = self.analysis_result()
-            print("=================================")
-            print("the profit margin is", tr * 100, "%")
-            print("the sharpe ratio is", sharpe_ratio)
-            print("the Volatility is", vol)
-            print("the max drawdown is", mdd)
-            print("the Calmar Ratio is", cr)
-            print("the Sortino Ratio is", sor)
-            print("=================================")
+            stats = OrderedDict(
+                {
+                    "Profit Margin": ["{:04f}%".format(tr * 100)],
+                    "Sharp Ratio": ["{:04f}".format(sharpe_ratio)],
+                    "Volatility": ["{:04f}".format(vol)],
+                    "Max Drawdown": ["{:04f}".format(mdd)],
+                    "Calmar Ratio": ["{:04f}".format(cr)],
+                    "Sortino Ratio": ["{:04f}".format(sor)],
+                }
+            )
+            table = print_metrics(stats)
+            print(table)
             return self.state, self.reward, self.terminal, {
                 "sharpe_ratio": sharpe_ratio
             }

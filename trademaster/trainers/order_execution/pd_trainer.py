@@ -8,6 +8,7 @@ from ..builder import TRAINERS
 from trademaster.utils import get_attr
 import numpy as np
 import os
+import pandas as pd
 
 
 @TRAINERS.register_module()
@@ -38,7 +39,7 @@ class OrderExecutionPDTrainer(Trainer):
         valid_score_list = []
         valid_number = 0
         for i in range(self.epochs):
-            print('<<<<<<<<<Episode: %s' % i)
+            print("Train Episode: [{}/{}]".format(i+1, self.epochs))
             s, info = self.train_environment.reset()
             # train the teacher first
             done = False
@@ -82,6 +83,7 @@ class OrderExecutionPDTrainer(Trainer):
                     torch.save(
                         self.agent.student_ppo.old_net, os.path.join(self.all_model_path,"{}_net.pth".format(valid_number)))
                     valid_number += 1
+                    print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
                     s, info = self.valid_environment.reset()
                     done = False
                     while not done:
