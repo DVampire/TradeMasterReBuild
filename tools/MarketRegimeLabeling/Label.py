@@ -31,11 +31,11 @@ Labeler.label(args.labeling_parameters)
 labeled_data=pd.concat([v for v in Labeler.data_dict.values()],axis=0)
 data=pd.read_csv(args.data_path)
 merged_data = data.merge(labeled_data,  how='left', on = ['date','tic','adjcp'],suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+low, high = args.labeling_parameters
 if args.PM!='False':
     DJI = merged_data.loc[:, ['date', 'label']]
     test = pd.read_csv(args.PM, index_col=0)
     merged = test.merge(DJI, on='date')
-    low, high = args.labeling_parameters
     merged.to_csv(output_path[:-4]+'_label_by_DJIindex_'+str(args.regime_number)+'_'+str(args.length_limit)+'_'+str(low)+'_'+str(high)+'.csv', index=False)
 else:
     merged_data.to_csv(output_path[:-4]+'_labeled_'+str(args.regime_number)+'_'+str(args.length_limit)+'_'+str(low)+'_'+str(high)+'.csv', index=False)
