@@ -37,7 +37,7 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
 
         rewards_list = []
         for i in range(self.epochs):
-            # train
+            print("Train Episode: [{}/{}]".format(i+1, self.epochs))
             state = self.train_environment.reset()
             done = False
             actions = []
@@ -53,7 +53,7 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
                 os.makedirs(model_path)
             model_path = os.path.join(model_path, "policy_gradient.pth")
             torch.save(self.agent.act_net, model_path)
-            # valid
+            print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
             state = self.valid_environment.reset()
             done = False
             rewards = 0

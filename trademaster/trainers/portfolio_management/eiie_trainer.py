@@ -40,6 +40,7 @@ class PortfolioManagementEIIETrainer(Trainer):
 
         rewards_list = []
         for i in range(self.epochs):
+            print("Train Episode: [{}/{}]".format(i + 1, self.epochs))
             j = 0
             done = False
             s = self.train_environment.reset()
@@ -62,6 +63,7 @@ class PortfolioManagementEIIETrainer(Trainer):
                        os.path.join(self.all_model_path, "actor_num_epoch_{}.pth".format(i)))
             torch.save(self.agent.cri_net,
                        os.path.join(self.all_model_path, "critic_num_epoch_{}.pth".format(i)))
+            print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
             s = self.valid_environment.reset()
             done = False
             rewards = 0

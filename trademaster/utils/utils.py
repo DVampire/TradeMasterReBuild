@@ -7,6 +7,13 @@ from mmcv import Config
 from mmcv.utils import Registry
 from mmcv.utils import print_log
 import numpy as np
+import prettytable
+
+def print_metrics(stats):
+    table = prettytable.PrettyTable()
+    for key, value in stats.items():
+        table.add_column(key, value)
+    return table
 
 def reduce_mem_usage(df, verbose=True):
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']

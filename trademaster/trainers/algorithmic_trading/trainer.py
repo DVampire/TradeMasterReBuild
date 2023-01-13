@@ -35,7 +35,7 @@ class AlgorithmicTradingTrainer(Trainer):
     def train_and_valid(self):
         valid_score_list = []
         for i in range(self.epochs):
-            print('<<<<<<<<<Episode: %s' % i)
+            print("Train Episode: [{}/{}]".format(i+1, self.epochs))
             s = self.train_environment.reset()
             episode_reward_sum = 0
             while True:
@@ -47,10 +47,11 @@ class AlgorithmicTradingTrainer(Trainer):
                 if self.agent.memory_counter > self.agent.memory_capacity:
                     self.agent.learn()
                 if done:
-                    print('episode%s---reward_sum: %s' % (i, round(episode_reward_sum, 2)))
+                    print("Train Episode Reward Sum: {:04f}".format(episode_reward_sum))
                     break
             torch.save(self.agent.act_net, os.path.join(self.work_dir, "all_model", "num_epoch_{}.pth".format(i)))
 
+            print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
             s = self.valid_environment.reset()
             episode_reward_sum = 0
             done = False
@@ -58,6 +59,9 @@ class AlgorithmicTradingTrainer(Trainer):
                 a = self.agent.choose_action_test(s)
                 s_, r, done, info = self.valid_environment.step(a)
                 episode_reward_sum += r
+                if done:
+                    print("Valid Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                    break
             valid_score_list.append(episode_reward_sum)
 
         index = valid_score_list.index(np.max(valid_score_list))

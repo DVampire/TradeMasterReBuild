@@ -76,7 +76,7 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
 
         rewards_list = []
         for i in range(self.epochs):
-            print("traning")
+            print("Train Episode: [{}/{}]".format(i+1, self.epochs))
             j = 0
             done = False
             s = self.train_environment.reset()
@@ -127,7 +127,7 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
             torch.save(
                 self.agent.market_net,
                 os.path.join(self.all_model_path, "market_policy_num_epoch_{}.pth".format(i)))
-            print("validating")
+            print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
             s = self.valid_environment.reset()
             done = False
             rewards = 0

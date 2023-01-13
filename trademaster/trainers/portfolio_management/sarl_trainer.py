@@ -69,9 +69,12 @@ class PortfolioManagementSARLTrainer(Trainer):
         self.trainer = self.trainer_name(env="portfolio_management", config=self.configs)
 
         for i in range(self.epochs):
+            print("Train Episode: [{}/{}]".format(i + 1, self.epochs))
             self.trainer.train()
             config = dict(dataset = self.dataset, task = "valid")
             self.valid_environment = env_creator(config)
+
+            print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
             state = self.valid_environment.reset()
             done = False
             while not done:

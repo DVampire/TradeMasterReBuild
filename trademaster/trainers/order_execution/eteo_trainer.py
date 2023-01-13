@@ -36,7 +36,7 @@ class OrderExecutionETEOTrainer(Trainer):
         reward_list = []
 
         for i in range(self.epochs):
-            print('<<<<<<<<<Episode: %s' % i)
+            print("Train Episode: [{}/{}]".format(i+1, self.epochs))
             num_epoch = i
             stacked_state = []
             s = self.train_environment.reset()
@@ -83,6 +83,7 @@ class OrderExecutionETEOTrainer(Trainer):
 
             torch.save(self.agent.act_net, os.path.join(self.all_model_path, "policy_state_value_net_{}.pth".format(num_epoch)))
             stacked_state = []
+            print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
             s = self.valid_environment.reset()
             stacked_state.append(s)
             for i in range(self.state_length - 1):
