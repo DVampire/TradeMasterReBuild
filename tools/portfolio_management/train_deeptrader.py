@@ -90,8 +90,10 @@ def test_deeptrader():
                                                    ))
     if task_name.startswith("train"):
         trainer.train_and_valid()
+        print("train end")
     elif task_name.startswith("test"):
         trainer.test()
+        print("test end")
 
 
 if __name__ == '__main__':
