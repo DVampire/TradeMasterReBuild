@@ -270,7 +270,7 @@ class Labeler():
         return np.asarray(coef_list), np.asarray(turning_points), y_pred_list, normalized_coef_list
 
     def plot(self,tics,parameters,data_path):
-        self.folder_name = re.findall("\/data\/(\S*)\/", data_path)[0]
+        self.folder_name = re.findall("\/(\S*)\/", data_path)[-1]
         if self.method=='linear':
             try:
                 low,high=parameters
