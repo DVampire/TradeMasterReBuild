@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pandas as pd
-
 ROOT = Path(__file__).resolve().parents[3]
 from ..custom import Trainer
 from ..builder import TRAINERS
@@ -10,9 +8,12 @@ import os
 import ray
 from ray.tune.registry import register_env
 from trademaster.environments.portfolio_management.sarl_environment import PortfolioManagementSARLEnvironment
+import pandas as pd
+
 
 def env_creator(config):
     return PortfolioManagementSARLEnvironment(config)
+
 
 def select_algorithms(alg_name):
     alg_name = alg_name.upper()
@@ -35,13 +36,14 @@ def select_algorithms(alg_name):
         raise NotImplementedError
     return trainer
 
+
 @TRAINERS.register_module()
 class PortfolioManagementSARLTrainer(Trainer):
     def __init__(self, **kwargs):
         super(PortfolioManagementSARLTrainer, self).__init__()
 
         self.device = get_attr(kwargs, "device", None)
-        self.configs = get_attr(kwargs, "configs",None)
+        self.configs = get_attr(kwargs, "configs", None)
         self.agent_name = get_attr(kwargs, "agent_name", "ppo")
         self.epochs = get_attr(kwargs, "epochs", 20)
         self.dataset = get_attr(kwargs, "dataset", None)
@@ -52,7 +54,7 @@ class PortfolioManagementSARLTrainer(Trainer):
         ray.init(ignore_reinit_error=True)
         self.trainer_name = select_algorithms(self.agent_name)
         self.configs["env"] = PortfolioManagementSARLEnvironment
-        self.configs["env_config"] = dict(dataset = self.dataset, task = "train")
+        self.configs["env_config"] = dict(dataset=self.dataset, task="train")
         register_env("portfolio_management", env_creator)
 
         self.all_model_path = os.path.join(self.work_dir, "all_model")
@@ -71,7 +73,7 @@ class PortfolioManagementSARLTrainer(Trainer):
         for i in range(self.epochs):
             print("Train Episode: [{}/{}]".format(i + 1, self.epochs))
             self.trainer.train()
-            config = dict(dataset = self.dataset, task = "valid")
+            config = dict(dataset=self.dataset, task="valid")
             self.valid_environment = env_creator(config)
 
             print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
