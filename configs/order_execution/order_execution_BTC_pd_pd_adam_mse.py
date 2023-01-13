@@ -22,6 +22,7 @@ data = dict(
     train_path="data/order_execution/PD_BTC/train.csv",
     valid_path="data/order_execution/PD_BTC/valid.csv",
     test_path="data/order_execution/PD_BTC/test.csv",
+    test_style_path="data/order_execution/PD_BTC/test_labeled_3_32.csv",
     tech_indicator_list=[
         "high",
         "low",

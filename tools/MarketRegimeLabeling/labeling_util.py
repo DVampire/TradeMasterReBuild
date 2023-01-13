@@ -284,8 +284,7 @@ class Labeler():
               print('not able to plot TSNE')
     def linear_regession_plot(self,data, tic, y_pred_list, turning_points, low, high, normalized_coef_list,folder_name=None):
         data = data.reset_index(drop=True)
-        fig, ax = plt.subplots(3, 1, figsize=(20, 10), constrained_layout=True)
-        ax[0].plot([i for i in range(data.shape[0])], data['adjcp_filtered'])
+        fig, ax = plt.subplots(1, 1, figsize=(20, 10), constrained_layout=True)
         seg1, seg2, seg3 = sorted([low, high, 0])
         colors = list(dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS).keys())
         for i in range(len(turning_points) - 1):
@@ -293,14 +292,17 @@ class Labeler():
             y_pred = y_pred_list[i]
             coef = normalized_coef_list[i]
             flag=self.regime_flag(self.regime_number,coef,[seg1, seg2, seg3])
-            ax[1].plot(x_seg, y_pred, color=colors[flag], label='cat' + str(flag))
-            ax[2].plot(x_seg,data['adjcp'].iloc[turning_points[i]:turning_points[i + 1]], color=colors[flag], label='cat' + str(flag))
+            ax[0].plot(x_seg,data['adjcp'].iloc[turning_points[i]:turning_points[i + 1]], color=colors[flag], label='market style ' + str(flag))
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
-        plt.legend(by_label.values(), by_label.keys())
+        font = font_manager.FontProperties(family='Comic Sans MS',
+                                           weight='bold',
+                                           style='normal', size=16)
+        plt.legend(by_label.values(), by_label.keys(), prop=font)
         ax[0].set_title(tic + '_linear_regression_regime', fontsize=20)
         if not os.path.exists('res/linear_model/'+folder_name):
             os.makedirs('res/linear_model/'+folder_name)
+
         fig.savefig('res/linear_model/'+folder_name+ tic + '.png')
         plt.close(fig)
 
