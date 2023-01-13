@@ -57,5 +57,5 @@ The script will take in a data file and output the file with a market regime lab
 Please prepare test data with the instruction in Usage and run agent with additional args, for example
 
 ```
- python agent/ETEO/trader.py --test_style 0
+ python tools/algorithmic_trading/train.py --task_name style_test --test_style 0
 ```
