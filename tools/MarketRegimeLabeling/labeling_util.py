@@ -16,6 +16,7 @@ from tslearn.clustering import TimeSeriesKMeans
 from tslearn.utils import to_time_series_dataset
 import pickle
 import re
+import matplotlib.font_manager as font_manager
 
 class Labeler():
     def __init__(self,data,method='linear',parameters=['2/7','2/14','4']):
