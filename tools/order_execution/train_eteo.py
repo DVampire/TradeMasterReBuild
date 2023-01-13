@@ -98,14 +98,17 @@ def test_eteo():
                                                    ))
     if task_name.startswith("train"):
         trainer.train_and_valid()
+        print("train end")
     elif task_name.startswith("test"):
         trainer.test()
+        print("test end")
     elif task_name.startswith("style_test"):
         reward_list=[]
         for trainer in trainers:
             reward_list.append(trainer.test())
         print('The win rate all this regime is:')
         print(Counter(reward_list))
+        print("style test end")
 
 
 

@@ -97,11 +97,14 @@ def test_dqn():
 
     if task_name.startswith("train"):
         trainer.train_and_valid()
+        print("train end")
     elif task_name.startswith("test"):
         trainer.test()
+        print("test end")
     elif task_name.startswith("style_test"):
         for trainer in trainers:
             trainer.test()
+        print("style test end")
 
 
 if __name__ == '__main__':
