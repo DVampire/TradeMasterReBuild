@@ -31,6 +31,8 @@ class AlgorithmicTradingDataset(CustomDataset):
             data = pd.read_csv(self.test_style_path)
             data = data.reset_index()
             data = data.loc[data['label'] == test_style, :]
+            if data.empty:
+                raise ValueError('The there is no market of this style in the test dataset')
             intervals, index_by_tick_list = self.get_styled_intervals_and_gives_new_index(data)
             data.drop(columns=['index'], inplace=True)
             temp_foler=osp.join(ROOT,os.path.dirname(self.test_style_path),'style_slice')
