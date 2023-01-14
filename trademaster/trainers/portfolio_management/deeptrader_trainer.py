@@ -66,7 +66,7 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
         if not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir)
         self.all_model_path = os.path.join(self.work_dir, "all_model")
-        best_model_path = os.path.join(self.work_dir, "best_model")
+        self.best_model_path = os.path.join(self.work_dir, "best_model")
         if not os.path.exists(self.all_model_path):
             os.makedirs(self.all_model_path)
         if not os.path.exists(self.best_model_path):
