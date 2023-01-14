@@ -128,3 +128,4 @@ class OrderExecutionPDTrainer(Trainer):
         reward_list = np.array(reward_list)
         np.save(os.path.join(self.work_dir,"action.npy"), action_list)
         np.save(os.path.join(self.work_dir,"reward.npy"), reward_list)
+        return reward_list[-1]

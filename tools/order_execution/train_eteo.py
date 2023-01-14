@@ -106,7 +106,7 @@ def test_eteo():
         reward_list=[]
         for trainer in trainers:
             reward_list.append(trainer.test())
-        print('The win rate all this regime is:')
+        print('The win rate of this regime is:')
         print(Counter(reward_list))
         print("style test end")
 
