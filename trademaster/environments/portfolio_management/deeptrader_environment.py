@@ -28,6 +28,8 @@ class PortfolioManagementDeepTraderEnvironment(Environments):
             self.df_path = get_attr(self.dataset, "train_path", None)
         elif self.task.startswith("valid"):
             self.df_path = get_attr(self.dataset, "valid_path", None)
+        elif self.task.startswith("test_style"):
+            self.df_paths = get_attr(self.dataset, "test_style_paths", None)
         else:
             self.df_path = get_attr(self.dataset, "test_path", None)
 
@@ -35,7 +37,11 @@ class PortfolioManagementDeepTraderEnvironment(Environments):
         self.transaction_cost_pct = get_attr(self.dataset, "transaction_cost_pct", 0.001)
         self.tech_indicator_list = get_attr(self.dataset, "tech_indicator_list", [])
 
-        self.df = pd.read_csv(self.df_path, index_col=0)
+        if self.task.startswith("test_style"):
+            style_test_path = get_attr(kwargs, "style_test_path", None)
+            self.df = pd.read_csv(style_test_path, index_col=0)
+        else:
+            self.df = pd.read_csv(self.df_path, index_col=0)
         self.stock_dim = len(self.df.tic.unique())
         self.state_space_shape = self.stock_dim
         self.action_space_shape = self.stock_dim

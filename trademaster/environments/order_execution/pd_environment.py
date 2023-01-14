@@ -26,6 +26,8 @@ class OrderExecutionPDEnvironment(Environments):
             self.df_path = get_attr(self.dataset, "train_path", None)
         elif self.task.startswith("valid"):
             self.df_path = get_attr(self.dataset, "valid_path", None)
+        elif self.task.startswith("test_style"):
+            self.df_paths = get_attr(self.dataset, "test_style_paths", None)
         else:
             self.df_path = get_attr(self.dataset, "test_path", None)
 
@@ -38,7 +40,11 @@ class OrderExecutionPDEnvironment(Environments):
         self.portfolio_history = [self.portfolio]
         self.order_length = get_attr(kwargs, "length_keeping", None)
 
-        self.df = pd.read_csv(self.df_path, index_col=0)
+        if self.task.startswith("test_style"):
+            style_test_path = get_attr(kwargs, "style_test_path", None)
+            self.df = pd.read_csv(style_test_path, index_col=0)
+        else:
+            self.df = pd.read_csv(self.df_path, index_col=0)
 
         self.time_frame = 0
         self.order_history = []
