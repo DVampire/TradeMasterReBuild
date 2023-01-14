@@ -56,6 +56,9 @@ def test_deeptrader():
     elif task_name.startswith("test"):
         trainer.test()
         print("test end")
+    elif task_name.startswith("style_test"):
+        trainer.style_test(args.test_style)
+        print("style test end")
 
 
 if __name__ == '__main__':

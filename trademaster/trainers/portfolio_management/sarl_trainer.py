@@ -108,3 +108,25 @@ class PortfolioManagementSARLTrainer(Trainer):
         df["daily_return"] = daily_return
         df["total assets"] = assets
         df.to_csv(os.path.join(self.work_dir, "test_result.csv"), index=False)
+
+
+    def style_test(self,style):
+        self.trainer.restore(self.best_model_path)
+        test_style_environments = []
+        for i, path in enumerate(dataset.test_style_paths):
+            config = dict(dataset=self.dataset, task="test_style",style_test_path=path,task_index=i)
+            test_style_environments.append(env_creator(config))
+        for i,env in enumerate(test_style_environments):
+            state = env.reset()
+            done = False
+            while not done:
+                action = self.trainer.compute_single_action(state)
+                state, reward, done, sharpe = env.step(action)
+            rewards = env.save_asset_memory()
+            assets = rewards["total assets"].values
+            df_return = env.save_portfolio_return_memory()
+            daily_return = df_return.daily_return.values
+            df = pd.DataFrame()
+            df["daily_return"] = daily_return
+            df["total assets"] = assets
+            df.to_csv(os.path.join(self.work_dir, "test_style_result"+"style_"+str(style)+"_part_"+str(i)+".csv"), index=False)

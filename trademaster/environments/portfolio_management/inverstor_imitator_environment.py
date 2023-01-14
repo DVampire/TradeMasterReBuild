@@ -32,8 +32,6 @@ class PortfolioManagementInvestorImitatorEnvironment(Environments):
             self.df_path = get_attr(self.dataset, "train_path", None)
         elif self.task.startswith("valid"):
             self.df_path = get_attr(self.dataset, "valid_path", None)
-        elif self.task.startswith("test_style"):
-            self.df_paths = get_attr(self.dataset, "test_style_paths", None)
         else:
             self.df_path = get_attr(self.dataset, "test_path", None)
 
