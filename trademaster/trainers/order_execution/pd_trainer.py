@@ -124,10 +124,8 @@ class OrderExecutionPDTrainer(Trainer):
             s = s_
             action_list.append(action)
             reward_list.append(r)
-            if done:
-                final_reward=reward
         action_list = np.array(action_list)
         reward_list = np.array(reward_list)
         np.save(os.path.join(self.work_dir,"action.npy"), action_list)
         np.save(os.path.join(self.work_dir,"reward.npy"), reward_list)
-        return final_reward
+        return reward_list[-1]
