@@ -21,6 +21,7 @@ import torch
 import torch.distributed as dist
 from iopath.common.file_io import g_pathmgr as pathmgr
 from torch._six import inf
+import pickle as pkl
 
 
 class SmoothedValue(object):
@@ -338,6 +339,15 @@ def get_grad_norm_(parameters, norm_type: float = 2.0) -> torch.Tensor:
             norm_type,
         )
     return total_norm
+
+def save_object(obj, output_path):
+    with open(os.path.join(output_path), "wb") as op:
+        pkl.dump(obj, op)
+
+def load_object(input_path):
+    with open(input_path, "rb") as op:
+        obj = pkl.load(op)
+    return obj
 
 def save_model(output_dir,
                epoch,

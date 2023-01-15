@@ -43,6 +43,21 @@ class PortfolioManagementEIIE(AgentBase):
         self.policy_update_frequency = 500
         self.critic_learn_time = 0
 
+    def get_save(self):
+        models = {
+            "act_net":self.act_net,
+            "cri_net":self.cri_net
+        }
+        optimizers = {
+            "act_optimizer":self.act_optimizer,
+            "cri_optimizer":self.cri_optimizer
+        }
+        res = {
+            "models":models,
+            "optimizers":optimizers
+        }
+        return res
+
     def store_transition(
             self,
             s,

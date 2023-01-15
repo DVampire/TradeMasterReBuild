@@ -3,12 +3,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 from ..custom import Trainer
 from ..builder import TRAINERS
-from trademaster.utils import get_attr
+from trademaster.utils import get_attr, save_object, load_object
 import os
 import ray
 from ray.tune.registry import register_env
 from trademaster.environments.portfolio_management.sarl_environment import PortfolioManagementSARLEnvironment
 import pandas as pd
+import numpy as np
+import random
+import torch
 
 
 def env_creator(config):
@@ -48,58 +51,87 @@ class PortfolioManagementSARLTrainer(Trainer):
         self.epochs = get_attr(kwargs, "epochs", 20)
         self.dataset = get_attr(kwargs, "dataset", None)
         self.work_dir = get_attr(kwargs, "work_dir", None)
-        self.work_dir = os.path.join(ROOT, self.work_dir)
-        if not os.path.exists(self.work_dir):
-            os.makedirs(self.work_dir)
+
         ray.init(ignore_reinit_error=True)
         self.trainer_name = select_algorithms(self.agent_name)
         self.configs["env"] = PortfolioManagementSARLEnvironment
         self.configs["env_config"] = dict(dataset=self.dataset, task="train")
         register_env("portfolio_management", env_creator)
 
-        self.all_model_path = os.path.join(self.work_dir, "all_model")
-        self.best_model_path = os.path.join(self.work_dir, "best_model")
-        if not os.path.exists(self.all_model_path):
-            os.makedirs(self.all_model_path)
-        if not os.path.exists(self.best_model_path):
-            os.makedirs(self.best_model_path)
+        self.seeds_list = get_attr(kwargs, "seeds_list", [12345])
+
+        self.work_dir = os.path.join(ROOT, self.work_dir)
+        if not os.path.exists(self.work_dir):
+            os.makedirs(self.work_dir)
+
+        self.checkpoints_path = os.path.join(self.work_dir, "checkpoints")
+        if not os.path.exists(self.checkpoints_path):
+            os.makedirs(self.checkpoints_path)
+
+        self.set_seed(random.choice(self.seeds_list))
+
+    def set_seed(self, seed):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.benckmark = False
+        torch.backends.cudnn.deterministic = True
 
     def train_and_valid(self):
-        self.sharpes = []
-        self.checkpoints = []
 
+        valid_score_list = []
         self.trainer = self.trainer_name(env="portfolio_management", config=self.configs)
 
-        for i in range(self.epochs):
-            print("Train Episode: [{}/{}]".format(i + 1, self.epochs))
+        for epoch in range(1, self.epochs+1):
+            print("Train Episode: [{}/{}]".format(epoch, self.epochs))
             self.trainer.train()
+
             config = dict(dataset=self.dataset, task="valid")
             self.valid_environment = env_creator(config)
-
-            print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
+            print("Valid Episode: [{}/{}]".format(epoch, self.epochs))
             state = self.valid_environment.reset()
-            done = False
-            while not done:
+
+            episode_reward_sum = 0
+            while True:
                 action = self.trainer.compute_single_action(state)
-                state, reward, done, information = self.valid_environment.step(
-                    action)
-            self.sharpes.append(information["sharpe_ratio"])
-            checkpoint = self.trainer.save(self.all_model_path)
-            self.checkpoints.append(checkpoint)
-        self.loc = self.sharpes.index(max(self.sharpes))
-        self.trainer.restore(self.checkpoints[self.loc])
-        self.trainer.save(self.best_model_path)
+                state, reward, done, information = self.valid_environment.step(action)
+                episode_reward_sum += reward
+                if done:
+                    print("Train Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                    break
+
+            valid_score_list.append(information["sharpe_ratio"])
+
+            checkpoint_path = os.path.join(self.checkpoints_path, "checkpoint-{:05d}.pkl".format(epoch))
+            obj = self.trainer.save_to_object()
+            save_object(obj, checkpoint_path)
+
+        max_index = np.argmax(valid_score_list)
+        obj = load_object(os.path.join(self.checkpoints_path, "checkpoint-{:05d}.pkl".format(max_index+1)))
+        save_object(obj, os.path.join(self.checkpoints_path, "best.pkl"))
         ray.shutdown()
 
     def test(self):
-        self.trainer.restore(self.best_model_path)
+        self.trainer = self.trainer_name(env="portfolio_management", config=self.configs)
+
+        obj = load_object(os.path.join(self.checkpoints_path, "best.pkl"))
+        self.trainer.restore_from_object(obj)
+
         config = dict(dataset=self.dataset, task="test")
         self.test_environment = env_creator(config)
+        print("Test Best Episode")
         state = self.test_environment.reset()
-        done = False
-        while not done:
+        episode_reward_sum = 0
+        while True:
             action = self.trainer.compute_single_action(state)
             state, reward, done, sharpe = self.test_environment.step(action)
+            episode_reward_sum += reward
+            if done:
+                print("Test Best Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                break
+
         rewards = self.test_environment.save_asset_memory()
         assets = rewards["total assets"].values
         df_return = self.test_environment.save_portfolio_return_memory()
@@ -108,7 +140,7 @@ class PortfolioManagementSARLTrainer(Trainer):
         df["daily_return"] = daily_return
         df["total assets"] = assets
         df.to_csv(os.path.join(self.work_dir, "test_result.csv"), index=False)
-
+        return daily_return
 
     def style_test(self,style):
         self.trainer.restore(self.best_model_path)

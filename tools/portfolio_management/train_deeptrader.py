@@ -54,7 +54,6 @@ def test_deeptrader():
             test_style_environments.append(build_environment(cfg, default_args=dict(dataset=dataset, task="test_style",
                                                                                     style_test_path=path,
                                                                                     task_index=i)))
-
     n_action = train_environment.action_space.shape[0]
     n_state = train_environment.observation_space.shape[0]
     N = train_environment.stock_dim

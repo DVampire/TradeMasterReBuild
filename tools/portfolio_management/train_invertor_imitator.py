@@ -54,7 +54,6 @@ def test_investor_imitator():
             test_style_environments.append(build_environment(cfg, default_args=dict(dataset=dataset, task="test_style",
                                                                                     style_test_path=path,
                                                                                     task_index=i)))
-
     n_action = train_environment.action_space.n
     n_state = train_environment.observation_space.shape[0]
     n_input = train_environment.observation_space.shape[1]

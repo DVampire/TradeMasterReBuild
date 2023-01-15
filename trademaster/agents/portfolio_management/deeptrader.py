@@ -148,6 +148,23 @@ class PortfolioManagementDeepTrader(AgentBase):
         self.policy_update_frequency = get_attr(kwargs, "policy_update_frequency", 500)
         self.critic_learn_time = 0
 
+    def get_save(self):
+        models = {
+            "act_net":self.act_net,
+            "cri_net":self.cri_net,
+            "market_net":self.market_net
+        }
+        optimizers = {
+            "act_optimizer":self.act_optimizer,
+            "cri_optimizer":self.cri_optimizer,
+            "market_optimizer":self.market_optimizer
+        }
+        res = {
+            "models":models,
+            "optimizers":optimizers
+        }
+        return res
+
     def store_transition(self, s_asset,
                          a_asset,
                          r,
@@ -215,7 +232,6 @@ class PortfolioManagementDeepTrader(AgentBase):
         return weights
 
     def learn(self):
-        print("learning")
         length = len(self.s_memory_asset)
         out1 = random.sample(range(length), int(length / 10))
         # random sample
@@ -247,7 +263,6 @@ class PortfolioManagementDeepTrader(AgentBase):
         self.critic_learn_time = self.critic_learn_time + 1
         # update the asset unit
         # 除了correlation以外都是tensor correlation是np.array 直接从make_correlation_information返回即可
-        print("update asset unit")
         for bs, ba, br, bs_, correlation, correlation_n in zip(
                 s_learn_asset, a_learn_asset, r_learn_asset, sn_learn_asset,
                 correlation_asset, correlation_asset_n):
@@ -272,7 +287,6 @@ class PortfolioManagementDeepTrader(AgentBase):
             self.cri_optimizer.step()
         # update the asset unit
         # 除了correlation以外都是tensor correlation是np.array 直接从make_correlation_information返回即可
-        print("update market unit")
         loss_market = 0
         for s, br, roh_bar in zip(s_learn_market, r_learn_asset,
                                   roh_bar_market):
@@ -281,5 +295,7 @@ class PortfolioManagementDeepTrader(AgentBase):
             b_prob = -normal.log_prob(roh_bar)
 
             loss_market += br * b_prob
+
+        self.market_optimizer.zero_grad()
         loss_market.backward()
         self.market_optimizer.step()

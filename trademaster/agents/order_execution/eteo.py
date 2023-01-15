@@ -22,7 +22,8 @@ class OrderExecutionETEO(AgentBase):
         self.act_net = get_attr(kwargs, "act_net", None).to(self.device)
         self.cri_net = get_attr(kwargs, "cri_net", None).to(self.device)
 
-        self.optimizer = get_attr(kwargs, "optimizer", None)
+        self.act_optimizer = get_attr(kwargs, "act_optimizer", None)
+        self.cri_optimizer = get_attr(kwargs, "cri_optimizer", None)
         self.loss = get_attr(kwargs, "loss", None)
 
         self.n_action = get_attr(kwargs, "n_action", None)
@@ -41,6 +42,21 @@ class OrderExecutionETEO(AgentBase):
         self.previous_rewards = []
         self.stacked_state = []
         self.dones = []
+
+    def get_save(self):
+        models = {
+            "act_net":self.act_net,
+            "cri_net":self.cri_net
+        }
+        optimizers = {
+            "act_optimizer":self.act_optimizer,
+            "cri_optimizer":self.cri_optimizer
+        }
+        res = {
+            "models":models,
+            "optimizers":optimizers
+        }
+        return res
 
     def compute_action(self, stacked_state):
         # stacked_state is a list of the previous state,(np.array with shape (156,)), whose length is 10
@@ -109,6 +125,7 @@ class OrderExecutionETEO(AgentBase):
         dones = []
         number_sample = int(len(self.inputs) * self.sample_effiency)
         sample_list_number = sample(range(len(self.inputs)), number_sample)
+
         for i in sample_list_number:
             inputs.append(self.inputs[i])
             actions.append(self.actions[i])
@@ -116,9 +133,9 @@ class OrderExecutionETEO(AgentBase):
             next_states.append(self.next_states[i])
             previous_rewards.append(self.previous_rewards[i])
             dones.append(self.dones[i])
-        for input, action, reward, next_state, previous_reward, done in zip(
-                inputs, actions, rewards, next_states, previous_rewards,
-                dones):
+
+        for input, action, reward, next_state, previous_reward, done in zip(inputs, actions, rewards, next_states, previous_rewards,dones):
+
             action_volume, action_price, v = self.act_net(next_state)
 
             td_target = reward + self.gamma * v * (1 - done)
@@ -166,6 +183,9 @@ class OrderExecutionETEO(AgentBase):
                 td_target.detach().reshape(-1),
                 v.reshape(-1).float())
             loss = loss_pi.float() + loss_v.float()
+
+            self.act_optimizer.zero_grad()
             loss.backward()
-            self.optimizer.step()
+            self.act_optimizer.step()
+
         self.act_net.load_state_dict(self.cri_net.state_dict(), strict=True)

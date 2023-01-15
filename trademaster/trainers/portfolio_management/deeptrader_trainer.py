@@ -1,3 +1,4 @@
+import random
 from pathlib import Path
 
 import torch
@@ -5,7 +6,7 @@ import torch
 ROOT = Path(__file__).resolve().parents[3]
 from ..custom import Trainer
 from ..builder import TRAINERS
-from trademaster.utils import get_attr
+from trademaster.utils import get_attr, save_model, save_best_model, load_model, load_best_model
 import numpy as np
 import os
 import pandas as pd
@@ -48,6 +49,16 @@ def make_correlation_information(df: pd.DataFrame, feature="adjclose"):
     return dfcc
 
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benckmark = False
+    torch.backends.cudnn.deterministic = True
+
+
 @TRAINERS.register_module()
 class PortfolioManagementDeepTraderTrainer(Trainer):
     def __init__(self, **kwargs):
@@ -62,25 +73,30 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
         self.test_environment = get_attr(kwargs, "test_environment", None)
         self.agent = get_attr(kwargs, "agent", None)
         self.work_dir = get_attr(kwargs, "work_dir", None)
+        self.seeds_list = get_attr(kwargs, "seeds_list", [12345])
+
         self.work_dir = os.path.join(ROOT, self.work_dir)
         if not os.path.exists(self.work_dir):
             os.makedirs(self.work_dir)
-        self.all_model_path = os.path.join(self.work_dir, "all_model")
-        self.best_model_path = os.path.join(self.work_dir, "best_model")
-        if not os.path.exists(self.all_model_path):
-            os.makedirs(self.all_model_path)
-        if not os.path.exists(self.best_model_path):
-            os.makedirs(self.best_model_path)
+
+        self.checkpoints_path = os.path.join(self.work_dir, "checkpoints")
+        if not os.path.exists(self.checkpoints_path):
+            os.makedirs(self.checkpoints_path)
+
+        set_seed(random.choice(self.seeds_list))
 
     def train_and_valid(self):
 
-        rewards_list = []
-        for i in range(self.epochs):
-            print("Train Episode: [{}/{}]".format(i+1, self.epochs))
-            j = 0
-            done = False
+        valid_score_list = []
+        for epoch in range(1, self.epochs+1):
+
+            print("Train Episode: [{}/{}]".format(epoch, self.epochs))
+
+            count = 0
             s = self.train_environment.reset()
-            while not done:
+
+            episode_reward_sum = 0
+            while True:
                 old_asset_state = s
                 old_market_state = torch.from_numpy(
                     make_market_information(
@@ -115,23 +131,21 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
                     torch.from_numpy(new_asset_state).float().to(self.device),
                     old_market_state, action_market, new_market_state,
                     corr_matrix_old, corr_matrix_new, self.agent.roh_bar)
-                j = j + 1
-                if j % 100 == 10:
+                count = count + 1
+                if count % 100 == 10:
                     self.agent.learn()
-            torch.save(
-                self.agent.act_net,
-                os.path.join(self.all_model_path, "act_net_num_epoch_{}.pth".format(i)))
-            torch.save(
-                self.agent.cri_net,
-                os.path.join(self.all_model_path, "cri_net_num_epoch_{}.pth".format(i)))
-            torch.save(
-                self.agent.market_net,
-                os.path.join(self.all_model_path, "market_policy_num_epoch_{}.pth".format(i)))
-            print("Valid Episode: [{}/{}]".format(i + 1, self.epochs))
+                if done:
+                    print("Train Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                    break
+
+            save_model(self.checkpoints_path,
+                       epoch=epoch,
+                       save=self.agent.get_save())
+
+            print("Valid Episode: [{}/{}]".format(epoch, self.epochs))
             s = self.valid_environment.reset()
-            done = False
-            rewards = 0
-            while not done:
+            episode_reward_sum = 0
+            while True:
                 old_state = s
                 old_market_state = torch.from_numpy(
                     make_market_information(
@@ -147,32 +161,27 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
                         technical_indicator=self.valid_environment.tech_indicator_list),
                     corr_matrix_old)
                 s, reward, done, _ = self.valid_environment.step(weights)
-                rewards += reward
-            rewards_list.append(rewards)
-        index = rewards_list.index(np.max(rewards_list))
-        act_net_model_path = os.path.join(self.all_model_path, "act_net_num_epoch_{}.pth".format(
-            index))
-        cri_net_model_path = os.path.join(self.all_model_path, "cri_net_num_epoch_{}.pth".format(
-            index))
-        market_net_model_path = os.path.join(self.all_model_path, "market_net_num_epoch_{}.pth".format(
-            index))
+                episode_reward_sum += reward
+                if done:
+                    print("Valid Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                    break
+            valid_score_list.append(episode_reward_sum)
 
-        self.agent.act_net = torch.load(act_net_model_path)
-        self.agent.cri_net = torch.load(cri_net_model_path)
-        self.agent.market_net = torch.load(market_net_model_path)
-
-        torch.save(self.agent.act_net, os.path.join(self.best_model_path, "act_net.pth"))
-        torch.save(self.agent.cri_net, os.path.join(self.best_model_path, "cri_net.pth"))
-        torch.save(self.agent.market_net, os.path.join(self.best_model_path, "market_net.pth"))
+        max_index = np.argmax(valid_score_list)
+        save_best_model(
+            output_dir=self.checkpoints_path,
+            epoch=max_index + 1,
+            save=self.agent.get_save()
+        )
 
     def test(self):
-        self.agent.act_net = torch.load(os.path.join(self.best_model_path, "act_net.pth"))
-        self.agent.cri_net = torch.load(os.path.join(self.best_model_path, "cri_net.pth"))
-        self.agent.market_net = torch.load(os.path.join(self.best_model_path, "market_net.pth"))
+        load_best_model(self.checkpoints_path, save=self.agent.get_save(), is_train=False)
 
+        print("Test Best Episode")
         s = self.test_environment.reset()
-        done = False
-        while not done:
+
+        episode_reward_sum = 0
+        while True:
             corr_matrix_old = make_correlation_information(
                 self.test_environment.data)
             weights = self.agent.compute_weights_test(
@@ -182,6 +191,11 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
                     technical_indicator=self.test_environment.tech_indicator_list),
                 corr_matrix_old)
             s, reward, done, _ = self.test_environment.step(weights)
+            episode_reward_sum += reward
+            if done:
+                print("Test Best Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                break
+
         df_return = self.test_environment.save_portfolio_return_memory()
         df_assets = self.test_environment.save_asset_memory()
         assets = df_assets["total assets"].values
@@ -190,3 +204,4 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
         df["daily_return"] = daily_return
         df["total assets"] = assets
         df.to_csv(os.path.join(self.work_dir, "test_result.csv"), index=False)
+        return daily_return

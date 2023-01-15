@@ -26,9 +26,23 @@ class PortfolioManagementInvestorImitator(AgentBase):
 
         self.act_optimizer = get_attr(kwargs, "act_optimizer", None)
         self.loss = get_attr(kwargs, "loss", None)
+        self.memory_counter = get_attr(kwargs, "memory_counter", None)
 
         self.n_action = get_attr(kwargs, "n_action", None)
         self.n_state = get_attr(kwargs, "n_state", None)
+
+    def get_save(self):
+        models = {
+            "act_net":self.act_net,
+        }
+        optimizers = {
+            "act_optimizer":self.act_optimizer,
+        }
+        res = {
+            "models":models,
+            "optimizers":optimizers
+        }
+        return res
 
     def select_action(self, state):
         state = torch.from_numpy(state).float().cuda()

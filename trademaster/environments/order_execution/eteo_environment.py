@@ -7,11 +7,12 @@ from pathlib import Path
 ROOT = str(Path(__file__).resolve().parents[2])
 sys.path.append(ROOT)
 import numpy as np
-from trademaster.utils import get_attr
+from trademaster.utils import get_attr, print_metrics
 import pandas as pd
 from ..custom import Environments
 from ..builder import ENVIRONMENTS
 from gym import spaces
+from collections import OrderedDict
 
 @ENVIRONMENTS.register_module()
 class OrderExecutionETEOEnvironment(Environments):
@@ -353,8 +354,6 @@ class OrderExecutionETEOEnvironment(Environments):
                 cash_used = cash_used + single_volume * self.data[
                     "midpoint"] * (1 + self.data["asks_distance_0"] * 0.01)
             TWAP_value = self.initial_amount - cash_used
-            print("TWAP_value", TWAP_value)
-            print("left_order", left_order)
             cash_left = self.portfolio[0] + self.portfolio[1]
             if left_order > 0:
                 # we need to buy more but we do not have the time, so we have to buy it at the lowest price we can get
@@ -363,14 +362,19 @@ class OrderExecutionETEOEnvironment(Environments):
             if left_order < 0:
                 cash_left = cash_left - left_order * self.data["midpoint"] * (
                         1 + self.data["bids_distance_0"] * 0.01)
-
             if cash_left >= TWAP_value:
-
                 self.reward = 1
             else:
                 self.reward = 0
-            print("done!")
-            print("the reward is {}".format(self.reward))
+
+            stats = OrderedDict(
+                {
+                    "TWAP": ["{:04f}".format(TWAP_value)],
+                }
+            )
+            table = print_metrics(stats)
+            print(table)
+
             return self.state, self.reward, self.terminal, {}
         else:
             return self.state, 0, self.terminal, {}

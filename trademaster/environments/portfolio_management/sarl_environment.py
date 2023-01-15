@@ -35,7 +35,7 @@ class PortfolioManagementSARLEnvironment(Environments):
         self.tech_indicator_list = get_attr(self.dataset, "tech_indicator_list", [])
 
         if self.task.startswith("test_style"):
-            style_test_path = get_attr(kwargs, "style_test_path", None)
+            style_test_path = get_attr(config, "style_test_path", None)
             self.df = pd.read_csv(style_test_path, index_col=0)
         else:
             self.df = pd.read_csv(self.df_path, index_col=0)
@@ -146,7 +146,6 @@ class PortfolioManagementSARLEnvironment(Environments):
             return self.state, self.reward, self.terminal, {
                 "sharpe_ratio": sharpe_ratio
             }
-
         else:
             # transfer actino into portofolios weights
             weights = self.softmax(actions)
@@ -206,7 +205,6 @@ class PortfolioManagementSARLEnvironment(Environments):
             self.portfolio_return_memory.append(portfolio_return)
             self.date_memory.append(self.data.date.unique()[0])
             self.asset_memory.append(new_portfolio_value)
-
             self.reward = self.reward
 
         return self.state, self.reward, self.terminal, {}
@@ -251,21 +249,6 @@ class PortfolioManagementSARLEnvironment(Environments):
 
         return df_value
 
-    def evaualte(self, df):
-        # a function to analysis the return & risk using history record
-        daily_return = df["daily_return"]
-        neg_ret_lst = df[df["daily_return"] < 0]["daily_return"]
-        tr = df["total assets"].values[-1] / df["total assets"].values[0] - 1
-        sharpe_ratio = np.mean(daily_return) / \
-                       np.std(daily_return) * (len(df) ** 0.5)
-        vol = np.std(daily_return)
-        mdd = max((max(df["total assets"]) - df["total assets"]) /
-                  max(df["total assets"]))
-        cr = np.sum(daily_return) / mdd
-        sor = np.sum(daily_return) / np.std(neg_ret_lst) / \
-              np.sqrt(len(daily_return))
-        return tr, sharpe_ratio, vol, mdd, cr, sor
-
     def analysis_result(self):
         # A simpler API for the environment to analysis itself when coming to terminal
         df_return = self.save_portfolio_return_memory()
@@ -276,3 +259,14 @@ class PortfolioManagementSARLEnvironment(Environments):
         df["daily_return"] = daily_return
         df["total assets"] = assets
         return self.evaualte(df)
+
+    def evaualte(self, df):
+        daily_return = df["daily_return"]
+        neg_ret_lst = df[df["daily_return"] < 0]["daily_return"]
+        tr = df["total assets"].values[-1] / (df["total assets"].values[0] + 1e-10) - 1
+        sharpe_ratio = np.mean(daily_return) / (np.std(daily_return) * (len(df) ** 0.5) + 1e-10)
+        vol = np.std(daily_return)
+        mdd = max((max(df["total assets"]) - df["total assets"]) / (max(df["total assets"])) + 1e-10)
+        cr = np.sum(daily_return) / (mdd + 1e-10)
+        sor = np.sum(daily_return) / (np.std(neg_ret_lst) + 1e-10) / (np.sqrt(len(daily_return))+1e-10)
+        return tr, sharpe_ratio, vol, mdd, cr, sor
