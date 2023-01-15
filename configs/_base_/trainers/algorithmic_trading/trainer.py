@@ -3,4 +3,5 @@ trainer = dict(
     epochs = 20,
     work_dir = "work_dir",
     if_remove = True,
+    seeds_list = [12345]
 )

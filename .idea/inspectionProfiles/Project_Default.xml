@@ -4,7 +4,7 @@
     <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ignoredPackages">
         <value>
-          <list size="71">
+          <list size="74">
             <item index="0" class="java.lang.String" itemvalue="timm" />
             <item index="1" class="java.lang.String" itemvalue="pretrainedmodels" />
             <item index="2" class="java.lang.String" itemvalue="efficientnet-pytorch" />
@@ -76,6 +76,9 @@
             <item index="68" class="java.lang.String" itemvalue="ujson" />
             <item index="69" class="java.lang.String" itemvalue="python-dotenv" />
             <item index="70" class="java.lang.String" itemvalue="python-binance" />
+            <item index="71" class="java.lang.String" itemvalue="yacs" />
+            <item index="72" class="java.lang.String" itemvalue="protobuf" />
+            <item index="73" class="java.lang.String" itemvalue="PyCryptodome" />
           </list>
         </value>
       </option>

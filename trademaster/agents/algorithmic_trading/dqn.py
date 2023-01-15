@@ -19,7 +19,8 @@ class AlgorithmicTradingDQN(AgentBase):
 
         self.act_net = get_attr(kwargs, "act_net", None).to(self.device)
         self.cri_net = get_attr(kwargs, "cri_net", None).to(self.device)
-        self.optimizer = get_attr(kwargs, "optimizer", None)
+        self.act_optimizer = get_attr(kwargs, "act_optimizer", None)
+        self.cri_optimizer = get_attr(kwargs, "cri_optimizer", None)
         self.loss = get_attr(kwargs, "loss", None)
 
         self.n_action = get_attr(kwargs, "n_action", None)
@@ -33,6 +34,21 @@ class AlgorithmicTradingDQN(AgentBase):
         self.target_freq = get_attr(kwargs,"target_freq",50)
         self.gamma = get_attr(kwargs, "gamma", 0.9)
         self.future_loss_weights = get_attr(kwargs, "future_loss_weights", 0.2)
+
+    def get_save(self):
+        models = {
+            "act_net":self.act_net,
+            "cri_net":self.cri_net
+        }
+        optimizers = {
+            "act_optimizer":self.act_optimizer,
+            "cri_optimizer":self.cri_optimizer
+        }
+        res = {
+            "models":models,
+            "optimizers":optimizers
+        }
+        return res
 
     def choose_action(self, x):  # 定义动作选择函数 (x为状态)
         x = torch.unsqueeze(torch.FloatTensor(x),0).to(self.device)
@@ -51,7 +67,7 @@ class AlgorithmicTradingDQN(AgentBase):
         action = action[0]
         return action
 
-    def store_transition(self, s, a, r, s_,info):
+    def store_transition(self, s, a, r, s_, info):
         transition = np.hstack((s, [a, r, info], s_))
         index = self.memory_counter % self.memory_capacity
         self.memory[index, :] = transition
@@ -82,6 +98,6 @@ class AlgorithmicTradingDQN(AgentBase):
         loss_future = self.loss(v_eval, b_info)
         loss = loss + self.future_loss_weights * loss_future
 
-        self.optimizer.zero_grad()
+        self.act_optimizer.zero_grad()
         loss.backward()
-        self.optimizer.step()
+        self.act_optimizer.step()
