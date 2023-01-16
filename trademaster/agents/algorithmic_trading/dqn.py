@@ -50,7 +50,7 @@ class AlgorithmicTradingDQN(AgentBase):
         }
         return res
 
-    def choose_action(self, x):  # 定义动作选择函数 (x为状态)
+    def choose_action(self, x):
         x = torch.unsqueeze(torch.FloatTensor(x),0).to(self.device)
         if np.random.uniform() < self.epsilon:
             actions_value, info = self.act_net.forward(x)
