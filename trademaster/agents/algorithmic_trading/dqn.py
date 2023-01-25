@@ -6,39 +6,31 @@ sys.path.append(ROOT)
 
 from ..builder import AGENTS
 from ..custom import AgentBase
-from trademaster.utils import get_attr
-import numpy as np
+from trademaster.utils import get_attr, ReplayBuffer
 import torch
+from torch import Tensor
+from typing import Tuple
+from copy import deepcopy
 
 @AGENTS.register_module()
 class AlgorithmicTradingDQN(AgentBase):
     def __init__(self, **kwargs):
-        super(AlgorithmicTradingDQN, self).__init__()
+        super(AlgorithmicTradingDQN, self).__init__(**kwargs)
+        self.act_target = self.cri_target = deepcopy(self.act)
 
-        self.device = get_attr(kwargs, "device", None)
+        self.gpu_id = int(get_attr(kwargs, "gpu_id", 0))
 
-        self.act_net = get_attr(kwargs, "act_net", None).to(self.device)
-        self.cri_net = get_attr(kwargs, "cri_net", None).to(self.device)
-        self.act_optimizer = get_attr(kwargs, "act_optimizer", None)
-        self.cri_optimizer = get_attr(kwargs, "cri_optimizer", None)
-        self.loss = get_attr(kwargs, "loss", None)
+        self.actiom_dim = get_attr(kwargs, "actiom_dim", None)
+        self.state_dim = get_attr(kwargs, "state_dim", None)
 
-        self.n_action = get_attr(kwargs, "n_action", None)
-        self.n_state = get_attr(kwargs, "n_state", None)
-
-        self.learn_step_counter = 0  # for target updating
-        self.memory_counter = 0  # for storing memory
-        self.memory_capacity = get_attr(kwargs, "memory_capacity", 2000)
-        self.memory = np.zeros((self.memory_capacity, self.n_state * 2 + 3))
-        self.epsilon = get_attr(kwargs,"epsilon", 0.9)
-        self.target_freq = get_attr(kwargs,"target_freq",50)
-        self.gamma = get_attr(kwargs, "gamma", 0.9)
-        self.future_loss_weights = get_attr(kwargs, "future_loss_weights", 0.2)
+        self.device = get_attr(kwargs, "device", torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu"))
 
     def get_save(self):
         models = {
-            "act_net":self.act_net,
-            "cri_net":self.cri_net
+            "act":self.act,
+            "cri":self.cri,
+            "act_target": self.act_target,
+            "cri_target": self.cri_target,
         }
         optimizers = {
             "act_optimizer":self.act_optimizer,
@@ -50,54 +42,130 @@ class AlgorithmicTradingDQN(AgentBase):
         }
         return res
 
-    def choose_action(self, x):
-        x = torch.unsqueeze(torch.FloatTensor(x),0).to(self.device)
-        if np.random.uniform() < self.epsilon:
-            actions_value, info = self.act_net.forward(x)
-            action = torch.max(actions_value,1)[1].data.cpu().numpy()
-            action = action[0]
-        else:
-            action = np.random.randint(0, self.n_action)
-        return action
+    def explore_one_env(self, env, horizon_len: int, if_random: bool = False) -> Tuple[Tensor, ...]:
+        """
+        Collect trajectories through the actor-environment interaction for a **single** environment instance.
 
-    def choose_action_test(self, x):
-        x = torch.unsqueeze(torch.FloatTensor(x),0).to(self.device)
-        actions_value, info = self.act_net.forward(x)
-        action = torch.max(actions_value,1)[1].data.cpu().numpy()
-        action = action[0]
-        return action
+        env: RL training environment. env.reset() env.step(). It should be a vector env.
+        horizon_len: collect horizon_len step while exploring to update networks
+        if_random: uses random action for warn-up exploration
+        return: `(states, actions, rewards, undones)` for off-policy
+            num_envs == 1
+            states.shape == (horizon_len, num_envs, state_dim)
+            actions.shape == (horizon_len, num_envs, action_dim)
+            rewards.shape == (horizon_len, num_envs)
+            undones.shape == (horizon_len, num_envs)
+        """
+        states = torch.zeros((horizon_len, self.num_envs, self.state_dim), dtype=torch.float32).to(self.device)
+        actions = torch.zeros((horizon_len, self.num_envs, 1), dtype=torch.int32).to(self.device)  # different
+        rewards = torch.zeros((horizon_len, self.num_envs), dtype=torch.float32).to(self.device)
+        dones = torch.zeros((horizon_len, self.num_envs), dtype=torch.bool).to(self.device)
 
-    def store_transition(self, s, a, r, s_, info):
-        transition = np.hstack((s, [a, r, info], s_))
-        index = self.memory_counter % self.memory_capacity
-        self.memory[index, :] = transition
-        self.memory_counter += 1
+        state = self.last_state  # last_state.shape = (state_dim, ) for a single env.
+        get_action = self.act.get_action
+        for t in range(horizon_len):
+            action = torch.randint(self.action_dim, size=(1, 1)) if if_random \
+                else get_action(state.unsqueeze(0))  # different
+            states[t] = state
 
-    def learn(self):
-        if self.learn_step_counter % self.target_freq == 0:
-            self.cri_net.load_state_dict(
-                self.act_net.state_dict())
-        self.learn_step_counter += 1
+            ary_action = action[0, 0].detach().cpu().numpy()
+            ary_state, reward, done, _ = env.step(ary_action)  # next_state
+            state = torch.as_tensor(env.reset() if done else ary_state, dtype=torch.float32, device=self.device)
+            actions[t] = action
+            rewards[t] = reward
+            dones[t] = done
 
-        sample_index = np.random.choice(self.memory_capacity, self.memory_capacity // 10)
+        self.last_state = state
 
-        b_memory = self.memory[sample_index, :]
+        rewards *= self.reward_scale
+        undones = 1.0 - dones.type(torch.float32)
+        return states, actions, rewards, undones
 
-        b_s = torch.FloatTensor(b_memory[:, :self.n_state]).to(self.device)
-        b_a = torch.LongTensor(b_memory[:, self.n_state:self.n_state +1].astype(int)).to(self.device)
-        b_r = torch.FloatTensor(b_memory[:, self.n_state + 1:self.n_state + 2]).to(self.device)
-        b_s_ = torch.FloatTensor(b_memory[:, -self.n_state:]).to(self.device)
-        b_info = torch.FloatTensor(b_memory[:,self.n_state + 2:self.n_state + 3]).to(self.device)
+    def explore_vec_env(self, env, horizon_len: int, if_random: bool = False) -> Tuple[Tensor, ...]:
+        """
+        Collect trajectories through the actor-environment interaction for a **vectorized** environment instance.
 
-        q_eval = self.act_net(b_s)[0].gather(1, b_a)
-        v_eval = self.act_net(b_s)[1]
-        q_next = self.cri_net(b_s_)[0].detach()
-        q_target = b_r + self.gamma * q_next.max(1)[0].view(self.memory_capacity // 10, 1)
+        env: RL training environment. env.reset() env.step(). It should be a vector env.
+        horizon_len: collect horizon_len step while exploring to update networks
+        if_random: uses random action for warn-up exploration
+        return: `(states, actions, rewards, undones)` for off-policy
+            states.shape == (horizon_len, num_envs, state_dim)
+            actions.shape == (horizon_len, num_envs, action_dim)
+            rewards.shape == (horizon_len, num_envs)
+            undones.shape == (horizon_len, num_envs)
+        """
+        states = torch.zeros((horizon_len, self.num_envs, self.state_dim), dtype=torch.float32).to(self.device)
+        actions = torch.zeros((horizon_len, self.num_envs, 1), dtype=torch.int32).to(self.device)  # different
+        rewards = torch.zeros((horizon_len, self.num_envs), dtype=torch.float32).to(self.device)
+        dones = torch.zeros((horizon_len, self.num_envs), dtype=torch.bool).to(self.device)
 
-        loss = self.loss(q_eval, q_target)
-        loss_future = self.loss(v_eval, b_info)
-        loss = loss + self.future_loss_weights * loss_future
+        state = self.last_state  # last_state.shape = (num_envs, state_dim) for a vectorized env.
 
-        self.act_optimizer.zero_grad()
-        loss.backward()
-        self.act_optimizer.step()
+        get_action = self.act.get_action
+        for t in range(horizon_len):
+            action = torch.randint(self.action_dim, size=(self.num_envs, 1)) if if_random \
+                else get_action(state).detach()  # different
+            states[t] = state
+
+            state, reward, done, _ = env.step(action)  # next_state
+            actions[t] = action
+            rewards[t] = reward
+            dones[t] = done
+
+        self.last_state = state
+
+        rewards *= self.reward_scale
+        undones = 1.0 - dones.type(torch.float32)
+        return states, actions, rewards, undones
+
+    def update_net(self, buffer: ReplayBuffer) -> Tuple[float, ...]:
+        obj_critics = 0.0
+        obj_actors = 0.0
+
+        update_times = int(buffer.add_size * self.repeat_times)
+        assert update_times >= 1
+        for _ in range(update_times):
+            obj_critic, q_value = self.get_obj_critic(buffer, self.batch_size)
+            obj_critics += obj_critic.item()
+            obj_actors += q_value.mean().item()
+            self.optimizer_update(self.cri_optimizer, obj_critic)
+            self.soft_update(self.cri_target, self.cri, self.soft_update_tau)
+        return obj_critics / update_times, obj_actors / update_times
+
+    def get_obj_critic_raw(self, buffer: ReplayBuffer, batch_size: int) -> Tuple[Tensor, Tensor]:
+        """
+        Calculate the loss of the network and predict Q values with **uniform sampling**.
+
+        :param buffer: the ReplayBuffer instance that stores the trajectories.
+        :param batch_size: the size of batch data for Stochastic Gradient Descent (SGD).
+        :return: the loss of the network and Q values.
+        """
+        with torch.no_grad():
+            state, action, reward, undone, next_s = buffer.sample(batch_size)
+            next_q = self.cri_target(next_s).max(dim=1, keepdim=True)[0].squeeze(1)
+            q_label = reward + undone * self.gamma * next_q
+
+        q_value = self.cri(state).gather(1, action.long()).squeeze(1)
+        obj_critic = self.criterion(q_value, q_label)
+        return obj_critic, q_value
+
+    def get_obj_critic_per(self, buffer: ReplayBuffer, batch_size: int) -> Tuple[Tensor, Tensor]:
+        """
+        Calculate the loss of the network and predict Q values with **Prioritized Experience Replay (PER)**.
+
+        :param buffer: the ReplayBuffer instance that stores the trajectories.
+        :param batch_size: the size of batch data for Stochastic Gradient Descent (SGD).
+        :return: the loss of the network and Q values.
+        """
+        with torch.no_grad():
+            state, action, reward, undone, next_s, is_weights = buffer.sample(batch_size)
+
+            next_q = self.cri_target(next_s).max(dim=1, keepdim=True)[0].squeeze(1)
+            q_label = reward + undone * self.gamma * next_q
+
+        q_value = self.cri(state).gather(1, action.long()).squeeze(1)
+        td_error = self.criterion(q_value, q_label)  # or td_error = (q_value - q_label).abs()
+        obj_critic = (td_error * is_weights).mean()
+
+        buffer.td_error_update(td_error.detach())
+        return obj_critic, q_value

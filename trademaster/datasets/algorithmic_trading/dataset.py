@@ -23,6 +23,7 @@ class AlgorithmicTradingDataset(CustomDataset):
         self.valid_path = osp.join(ROOT, get_attr(kwargs, "valid_path", None))
         self.test_path = osp.join(ROOT, get_attr(kwargs, "test_path", None))
         self.test_style_path=osp.join(ROOT, get_attr(kwargs, "test_style_path", None))
+
         test_style=int(get_attr(kwargs, "test_style", None))
         if test_style!=-1:
             backward_num_day= get_attr(kwargs, "backward_num_day", None)

@@ -1,13 +1,9 @@
-act_net = dict(
+act = dict(
     type = "QNet",
-    n_state = 10,
-    n_action = 2,
-    hidden_nodes = 256
+    state_dim = 10,
+    action_dim = 2,
+    dims=(64, 32),
+    explore_rate = 0.25
 )
 
-cri_net = dict(
-    type = "QNet",
-    n_state = 10,
-    n_action = 2,
-    hidden_nodes = 256
-)
+cri = None

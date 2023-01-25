@@ -20,13 +20,12 @@ from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
     parser.add_argument("--config", default=osp.join(ROOT, "configs", "algorithmic_trading",
                                                      "algorithmic_trading_BTC_dqn_dqn_adam_mse.py"),
                         help="download datasets config file path")
-    parser.add_argument("--task_name", type=str, default="test")
+    parser.add_argument("--task_name", type=str, default="train")
     parser.add_argument("--test_style", type=str, default='-1')
     args = parser.parse_args()
     return args
@@ -50,6 +49,7 @@ def test_dqn():
     train_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="train"))
     valid_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="valid"))
     test_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="test"))
+
     if task_name.startswith("style_test"):
         test_style_environments = []
         for i, path in enumerate(dataset.test_style_paths):
@@ -57,31 +57,28 @@ def test_dqn():
                                                                                     style_test_path=path,
                                                                                     task_index=i)))
 
-    n_action = train_environment.action_space.n
-    n_state = train_environment.observation_space.shape[0]
+    action_dim = train_environment.action_space.n
+    state_dim = train_environment.observation_space.shape[0]
 
-    cfg.act_net.update(dict(n_action=n_action, n_state=n_state))
-    cfg.cri_net.update(dict(n_action=n_action, n_state=n_state))
+    cfg.act.update(dict(action_dim=action_dim, state_dim=state_dim))
+    act = build_net(cfg.act)
+    if cfg.cri:
+        cfg.cri.update(dict(action_dim=action_dim, state_dim=state_dim))
+        cri = build_net(cfg.cri)
+    else:
+        cri = None
 
-    act_net = build_net(cfg.act_net)
-    cri_net = build_net(cfg.cri_net)
-
-    work_dir = os.path.join(ROOT, cfg.trainer.work_dir)
-    if not os.path.exists(work_dir):
-        os.makedirs(work_dir)
-    cfg.dump(osp.join(work_dir, osp.basename(args.config)))
-
-    act_optimizer = build_optimizer(cfg, default_args=dict(params=act_net.parameters()))
+    act_optimizer = build_optimizer(cfg, default_args=dict(params=act.parameters()))
     cri_optimizer = None
-    loss = build_loss(cfg)
+    criterion = build_loss(cfg)
 
-    agent = build_agent(cfg, default_args=dict(n_action=n_action,
-                                               n_state=n_state,
-                                               act_net=act_net,
-                                               cri_net=cri_net,
+    agent = build_agent(cfg, default_args=dict(action_dim = action_dim,
+                                               state_dim = state_dim,
+                                               act = act,
+                                               cri = cri,
                                                act_optimizer=act_optimizer,
                                                cri_optimizer=cri_optimizer,
-                                               loss=loss,
+                                               criterion=criterion,
                                                device=device))
 
     if task_name.startswith("style_test"):
@@ -99,6 +96,8 @@ def test_dqn():
                                                        test_environment=test_environment,
                                                        agent=agent,
                                                        device=device))
+
+    cfg.dump(osp.join(trainer.work_dir, osp.basename(args.config)))
 
     if task_name.startswith("train"):
         trainer.train_and_valid()
