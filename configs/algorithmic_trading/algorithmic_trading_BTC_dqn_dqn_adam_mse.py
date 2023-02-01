@@ -16,6 +16,8 @@ _base_ = [
     f"../_base_/nets/{net_name}.py",
 ]
 
+
+batch_size = 64
 data = dict(
     type='AlgorithmicTradingDataset',
     data_path='data/algorithmic_trading/BTC',
@@ -36,21 +38,38 @@ data = dict(
     transaction_cost_pct=0.001,
     test_style='-1')
 environment = dict(type='AlgorithmicTradingEnvironment')
-act = dict(
-    type='QNet', state_dim=82, action_dim=3, dims=(64, 32), explore_rate=0.25)
-cri = None
 agent = dict(
     type='AlgorithmicTradingDQN',
+    max_step=12345,
+    reward_scale=1,
+    repeat_times=1,
+    gamma=0.9,
+    batch_size=batch_size,
+    clip_grad_norm=3.0,
+    soft_update_tau=0,
+    state_value_tau=0.005,
     memory_capacity=2000,
     epsilon=0.9,
     target_freq=50,
-    gamma=0.9,
     future_loss_weights=0.2)
 trainer = dict(
     type='AlgorithmicTradingTrainer',
     epochs=20,
     work_dir=work_dir,
+    seeds_list=(12345, ),
+    batch_size=batch_size,
+    horizon_len=512,
+    buffer_size=1000000.0,
+    num_threads=8,
     if_remove=True,
-    seeds_list=(12345, ))
+    if_discrete=True,
+    if_off_policy=True,
+    if_keep_save=True,
+    if_over_write=False,
+    if_save_buffer=False,
+    eval_times=3)
 loss = dict(type='MSELoss')
 optimizer = dict(type='Adam', lr=0.001)
+act = dict(
+    type='QNet', state_dim=82, action_dim=3, dims=(64, 32), explore_rate=0.25)
+cri = None

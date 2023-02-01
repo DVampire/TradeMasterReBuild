@@ -34,7 +34,7 @@ class AlgorithmicTradingTrainer(Trainer):
         self.num_threads = int(get_attr(kwargs, "num_threads", 8))
 
         self.if_remove = get_attr(kwargs, "if_remove", False)
-        self.if_discrete = get_attr(kwargs, "if_discrete", True) # discrete or continuous action space
+        self.if_discrete = get_attr(kwargs, "if_discrete", False) # discrete or continuous action space
         self.if_off_policy = get_attr(kwargs, "if_off_policy", True)
         self.if_keep_save = get_attr(kwargs, "if_keep_save", True)  # keeping save the checkpoint. False means save until stop training.
         self.if_over_write = get_attr(kwargs, "if_over_write", False)  # overwrite the best policy network. `self.cwd/actor.pth`
@@ -44,12 +44,10 @@ class AlgorithmicTradingTrainer(Trainer):
             self.batch_size = int(get_attr(kwargs, "batch_size", 64))  # num of transitions sampled from replay buffer.
             self.horizon_len = int(get_attr(kwargs, "horizon_len", 512))  # collect horizon_len step while exploring, then update networks
             self.buffer_size = int(get_attr(kwargs, "buffer_size", 1e6))  # ReplayBuffer size. First in first out for off-policy.
-            self.repeat_times = get_attr(kwargs, "repeat_times", 1.0)  # repeatedly update network using ReplayBuffer to keep critic's loss small
         else:  # on-policy
             self.batch_size = int(get_attr(kwargs, "batch_size", 128))  # num of transitions sampled from replay buffer.
             self.horizon_len = int(get_attr(kwargs, "horizon_len", 2048))  # collect horizon_len step while exploring, then update network
             self.buffer_size = int(get_attr(kwargs, "buffer_size", None))  # ReplayBuffer size. Empty the ReplayBuffer for on-policy.
-            self.repeat_times = get_attr(kwargs, "repeat_times", 8.0)  # repeatedly update network using ReplayBuffer to keep critic's loss small
 
         self.state_dim = self.agent.state_dim
         self.action_dim = self.agent.action_dim

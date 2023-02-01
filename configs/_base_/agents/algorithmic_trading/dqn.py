@@ -1,9 +1,12 @@
 
 agent = dict(
     type = "AlgorithmicTradingDQN",
-    memory_capacity = 2000,
-    epsilon =0.9,
-    target_freq = 50,
-    gamma = 0.9,
-    future_loss_weights = 0.2
+    max_step = 12345,
+    reward_scale = 2**0,
+    repeat_times = 1,
+    gamma = 0.99,
+    batch_size = 64,
+    clip_grad_norm = 3.0,
+    soft_update_tau = 0,
+    state_value_tau = 5e-3
 )
