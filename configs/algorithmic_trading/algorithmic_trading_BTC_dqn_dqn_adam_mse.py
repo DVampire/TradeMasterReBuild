@@ -16,7 +16,6 @@ _base_ = [
     f"../_base_/nets/{net_name}.py",
 ]
 
-
 batch_size = 64
 data = dict(
     type='AlgorithmicTradingDataset',
@@ -32,10 +31,6 @@ data = dict(
     ],
     backward_num_day=5,
     forward_num_day=5,
-    future_weights=0.2,
-    initial_amount=100000,
-    max_volume=1,
-    transaction_cost_pct=0.001,
     test_style='-1')
 environment = dict(type='AlgorithmicTradingEnvironment')
 agent = dict(
@@ -44,14 +39,11 @@ agent = dict(
     reward_scale=1,
     repeat_times=1,
     gamma=0.9,
-    batch_size=batch_size,
+    batch_size=64,
     clip_grad_norm=3.0,
     soft_update_tau=0,
-    state_value_tau=0.005,
-    memory_capacity=2000,
-    epsilon=0.9,
-    target_freq=50,
-    future_loss_weights=0.2)
+    state_value_tau=0.005
+)
 trainer = dict(
     type='AlgorithmicTradingTrainer',
     epochs=20,

@@ -24,10 +24,12 @@ class AlgorithmicTradingDataset(CustomDataset):
         self.test_path = osp.join(ROOT, get_attr(kwargs, "test_path", None))
         self.test_style_path=osp.join(ROOT, get_attr(kwargs, "test_style_path", None))
 
+        self.backward_num_day = get_attr(kwargs, "backward_num_day", 5)
+        self.forward_num_day = get_attr(kwargs, "forward_num_day", 5)
+        self.tech_indicator_list = get_attr(kwargs, "tech_indicator_list", [])
+
         test_style=int(get_attr(kwargs, "test_style", None))
         if test_style!=-1:
-            backward_num_day= get_attr(kwargs, "backward_num_day", None)
-            forward_num_day=get_attr(kwargs, "forward_num_day", None)
             self.test_style_paths=[]
             data = pd.read_csv(self.test_style_path)
             data = data.reset_index()
@@ -44,20 +46,10 @@ class AlgorithmicTradingDataset(CustomDataset):
                 data_temp.index = index_by_tick_list[i]
                 path=osp.join(ROOT,temp_foler,str(test_style) + '_' + str(i) + '.csv')
                 data_temp.to_csv(path)
-                if max(index_by_tick_list[i]) + 1 <= backward_num_day + forward_num_day + 2:
+                if max(index_by_tick_list[i]) + 1 <= self.backward_num_day + self.forward_num_day + 2:
                     print('The ' + str(i) + '_th segment length is less than the min length so it won\'t be tested')
                     continue
                 self.test_style_paths.append(path)
-
-
-
-        self.tech_indicator_list = get_attr(kwargs, "tech_indicator_list", [])
-        self.backward_num_day = get_attr(kwargs, "backward_num_day", 5)
-        self.forward_num_day = get_attr(kwargs, "forward_num_day", 5)
-        self.future_weights = get_attr(kwargs, "future_weights", 0.2)
-        self.initial_amount = get_attr(kwargs, "initial_amount", 100000)
-        self.max_volume = get_attr(kwargs, "max_volume", 1)
-        self.transaction_cost_pct = get_attr(kwargs, "transaction_cost_pct", 0.001)
 
     def get_styled_intervals_and_gives_new_index(self,data):
         index_by_tick_list = []

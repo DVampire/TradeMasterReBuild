@@ -26,8 +26,4 @@ data = dict(
     ],
     backward_num_day = 5,
     forward_num_day = 5,
-    future_weights = 0.2,
-    initial_amount = 100000,
-    max_volume = 1,
-    transaction_cost_pct = 0.001
 )
