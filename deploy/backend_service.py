@@ -58,14 +58,16 @@ class Server():
         self.sessions = self.load_sessions()
 
     def parameters(self):
-        param = {
+        logger.info("get_parameters start.")
+        res = {
             "task_name": ["algorithmic_trading", "order_execution", "portfolio_management"],
             "dataset_name": ["algorithmic_trading:BTC",
                              "order_excecution:BTC",
+                             "order_excecution:PD_BTC",
                              "portfolio_management:dj30",
                              "portfolio_management:exchange"],
             "optimizer_name": ["adam", "adaw"],
-            "loss_name": ["mse","mae"],
+            "loss_name": ["mae", "mse"],
             "agent_name": [
                 "algorithmic_trading:dqn",
                 "order_execution:eteo",
@@ -80,9 +82,29 @@ class Server():
                 "portfolio_management:sac",
                 "portfolio_management:sarl",
                 "portfolio_management:td3"
+            ],
+            "start_date": {
+                "algorithmic_trading:BTC": "2013-04-29",
+                "order_excecution:BTC": "2021-04-07",
+                "order_excecution:PD_BTC": "2013-04-29",
+                "portfolio_management:dj30": "2012-01-04",
+                "portfolio_management:exchange": "2000-01-27",
+            },
+            "end_date": {
+                "algorithmic_trading:BTC": "2021-07-05",
+                "order_excecution:BTC": "2021-04-19",
+                "order_excecution:PD_BTC": "2021-07-05",
+                "portfolio_management:dj30": "2021-12-31",
+                "portfolio_management:exchange": "2019-12-31",
+            },
+            "style_test": [
+                "bear_market",
+                "bull_market",
+                "oscillation_market"
             ]
         }
-        return param
+        logger.info("get_parameters end.")
+        return jsonify(res)
 
     def train_scripts(self, task_name, dataset_name, optimizer_name, loss_name, agent_name):
         if task_name == "algorithmic_trading":
@@ -139,9 +161,11 @@ class Server():
             optimizer_name = request_json.get("optimizer_name")
             loss_name = request_json.get("loss_name")
             agent_name = request_json.get("agent_name").split(":")[-1]
-            train_start_date = request_json.get("train_start_date")
-            test_start_date = request_json.get("test_start_date")
+            start_date = request_json.get("start_date")
+            end_date = request_json.get("end_date")
             session_id = str(uuid.uuid1())
+
+            assert end_date > start_date
 
             cfg_path = os.path.join(ROOT, "configs", task_name,
                                     f"{task_name}_{dataset_name}_{agent_name}_{agent_name}_{optimizer_name}_{loss_name}.py")
@@ -159,28 +183,29 @@ class Server():
 
             # build dataset
             data = pd.read_csv(os.path.join(ROOT, cfg.data.data_path, "data.csv"), index_col=0)
-            if test_start_date > train_start_date:
-                train_and_valid_date = data[(data["date"] >= train_start_date) & (data["date"] < test_start_date)]
-                indexs = range(len(train_and_valid_date.index.unique()))
+            data = data[(data["date"] >= start_date) & (data["date"] < end_date)]
 
-                train_indexs = indexs[:int(len(indexs) * 0.8)]
-                val_indexs = indexs[int(len(indexs) * 0.8):]
+            indexs = range(len(data.index.unique()))
 
-                train_data = data.loc[train_indexs, :]
-                train_data.index = train_data.index - train_data.index.min()
+            train_indexs = indexs[:int(len(indexs) * 0.8)]
+            val_indexs = indexs[int(len(indexs) * 0.8):int(len(indexs) * 0.9)]
+            test_indexs = indexs[int(len(indexs) * 0.9):]
 
-                val_data = data.loc[val_indexs, :]
-                val_data.index = val_data.index - val_data.index.min()
+            train_data = data.loc[train_indexs, :]
+            train_data.index = train_data.index - train_data.index.min()
 
-                test_data = data[data["date"] >= test_start_date]
-                test_data.index = test_data.index - test_data.index.min()
+            val_data = data.loc[val_indexs, :]
+            val_data.index = val_data.index - val_data.index.min()
 
-                train_data.to_csv(os.path.join(work_dir, "train.csv"))
-                cfg.data.train_path = "{}/{}".format(cfg.work_dir, "train.csv")
-                val_data.to_csv(os.path.join(work_dir, "valid.csv"))
-                cfg.data.valid_path = "{}/{}".format(cfg.work_dir, "valid.csv")
-                test_data.to_csv(os.path.join(work_dir, "test.csv"))
-                cfg.data.test_path = "{}/{}".format(cfg.work_dir, "test.csv")
+            test_data = data.loc[test_indexs, :]
+            test_data.index = test_data.index - test_data.index.min()
+
+            train_data.to_csv(os.path.join(work_dir, "train.csv"))
+            cfg.data.train_path = "{}/{}".format(cfg.work_dir, "train.csv")
+            val_data.to_csv(os.path.join(work_dir, "valid.csv"))
+            cfg.data.valid_path = "{}/{}".format(cfg.work_dir, "valid.csv")
+            test_data.to_csv(os.path.join(work_dir, "test.csv"))
+            cfg.data.test_path = "{}/{}".format(cfg.work_dir, "test.csv")
 
             cfg_path = os.path.join(work_dir, osp.basename(cfg_path))
             cfg.dump(cfg_path)
@@ -321,6 +346,34 @@ class Server():
             logger.info(info)
             return jsonify(res)
 
+    def style_test(self, request):
+        request_json = json.loads(request.get_data(as_text=True))
+        try:
+
+            session_id = request_json.get("session_id")
+            style_test_mode = request_json.get("style_test")
+
+            error_code = 0
+            info = "style test request success"
+            res = {
+                "error_code": error_code,
+                "info": info,
+                "session_id": session_id
+            }
+            logger.info(info)
+            return jsonify(res)
+
+        except Exception as e:
+            error_code = 1
+            info = "request data error, {}".format(e)
+            res = {
+                "error_code": error_code,
+                "info": info,
+                "session_id": session_id
+            }
+            logger.info(info)
+            return jsonify(res)
+
 
 class HealthCheck():
     def __init__(self):
@@ -374,6 +427,11 @@ def test():
 @app.route("/api/TradeMaster/test_status", methods=["POST"])
 def test_status():
     res = SERVER.test_status(request)
+    return res
+
+@app.route("/api/TradeMaster/style_test", methods=["POST"])
+def style_test():
+    res = SERVER.style_test(request)
     return res
 
 
