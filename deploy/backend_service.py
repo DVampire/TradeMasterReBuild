@@ -58,7 +58,6 @@ class Server():
         self.sessions = self.load_sessions()
 
     def parameters(self):
-        logger.info("get_parameters start.")
         res = {
             "task_name": ["algorithmic_trading", "order_execution", "portfolio_management"],
             "dataset_name": ["algorithmic_trading:BTC",
@@ -103,8 +102,7 @@ class Server():
                 "oscillation_market"
             ]
         }
-        logger.info("get_parameters end.")
-        return jsonify(res)
+        return res
 
     def train_scripts(self, task_name, dataset_name, optimizer_name, loss_name, agent_name):
         if task_name == "algorithmic_trading":
@@ -150,7 +148,9 @@ class Server():
         return sessions
 
     def get_parameters(self, request):
+        logger.info("get parameters start.")
         param = self.parameters()
+        logger.info("get parameters end.")
         return jsonify(param)
 
     def train(self, request):
