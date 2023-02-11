@@ -165,8 +165,6 @@ class Server():
             end_date = request_json.get("end_date")
             session_id = str(uuid.uuid1())
 
-            assert end_date > start_date
-
             cfg_path = os.path.join(ROOT, "configs", task_name,
                                     f"{task_name}_{dataset_name}_{agent_name}_{agent_name}_{optimizer_name}_{loss_name}.py")
             train_script_path = self.train_scripts(task_name, dataset_name, optimizer_name, loss_name, agent_name)

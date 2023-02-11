@@ -50,16 +50,15 @@ trainer = dict(
     work_dir=work_dir,
     seeds_list=(12345, ),
     batch_size=batch_size,
-    horizon_len=512,
+    horizon_len= 1024,
     buffer_size=1000000.0,
     num_threads=8,
-    if_remove=True,
+    if_remove=False,
     if_discrete=True,
     if_off_policy=True,
     if_keep_save=True,
     if_over_write=False,
-    if_save_buffer=False,
-    eval_times=3)
+    if_save_buffer=False,)
 loss = dict(type='MSELoss')
 optimizer = dict(type='Adam', lr=0.001)
 act = dict(

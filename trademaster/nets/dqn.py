@@ -20,6 +20,9 @@ class QNet(Net):
         self.explore_rate = explore_rate
         self.action_dim = action_dim
 
+        # init weights
+        self.net.apply(self.init_weights)
+
     def forward(self, state: Tensor) -> Tensor:
         return self.net(state)  # Q values for multiple actions
 
@@ -29,3 +32,9 @@ class QNet(Net):
         else:
             action = torch.randint(self.action_dim, size=(state.shape[0], 1))
         return action
+
+    def init_weights(self, m):
+        # init linear
+        if isinstance(m, nn.Linear):
+            torch.nn.init.kaiming_uniform(m.weight)
+            m.bias.data.zero_()

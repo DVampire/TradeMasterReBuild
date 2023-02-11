@@ -44,7 +44,6 @@ class AlgorithmicTradingEnvironment(Environments):
         else:
             self.df = pd.read_csv(self.df_path, index_col=0)
 
-
         self.action_space = spaces.Discrete(2 * (self.max_volume) + 1)
         self.observation_space = spaces.Box(
             low=-np.inf,
@@ -52,6 +51,9 @@ class AlgorithmicTradingEnvironment(Environments):
             shape=(len(self.tech_indicator_list) * self.backward_num_day +
                    2,),
         )
+
+        self.action_dim = self.action_space.n
+        self.state_dim = self.observation_space.shape[0]
 
         # reset
         self.compound_memory = [[self.initial_amount, 0]]

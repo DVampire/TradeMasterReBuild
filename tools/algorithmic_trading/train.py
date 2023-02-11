@@ -56,19 +56,20 @@ def test_dqn():
                                                                                     style_test_path=path,
                                                                                     task_index=i)))
 
-    action_dim = train_environment.action_space.n
-    state_dim = train_environment.observation_space.shape[0]
+    action_dim = train_environment.action_dim
+    state_dim = train_environment.state_dim
 
     cfg.act.update(dict(action_dim=action_dim, state_dim=state_dim))
     act = build_net(cfg.act)
+    act_optimizer = build_optimizer(cfg, default_args=dict(params=act.parameters()))
     if cfg.cri:
         cfg.cri.update(dict(action_dim=action_dim, state_dim=state_dim))
         cri = build_net(cfg.cri)
+        cri_optimizer = build_optimizer(cfg, default_args=dict(params=cri.parameters()))
     else:
         cri = None
+        cri_optimizer = None
 
-    act_optimizer = build_optimizer(cfg, default_args=dict(params=act.parameters()))
-    cri_optimizer = None
     criterion = build_loss(cfg)
 
     agent = build_agent(cfg, default_args=dict(action_dim = action_dim,
@@ -88,7 +89,6 @@ def test_dqn():
                                                                  test_environment=env,
                                                                  agent=agent,
                                                                  device=device)))
-
     else:
         trainer = build_trainer(cfg, default_args=dict(train_environment=train_environment,
                                                        valid_environment=valid_environment,
@@ -96,10 +96,11 @@ def test_dqn():
                                                        agent=agent,
                                                        device=device))
 
-    cfg.dump(osp.join(trainer.work_dir, osp.basename(args.config)))
+    cfg.dump(osp.join(ROOT, cfg.work_dir, osp.basename(args.config)))
 
     if task_name.startswith("train"):
         trainer.train_and_valid()
+        trainer.test()
         print("train end")
     elif task_name.startswith("test"):
         trainer.test()
@@ -118,58 +119,4 @@ if __name__ == '__main__':
     algorithmic_trading
     portfolio_management
     """
-
-    # from trademaster.agents import AgentBase, AGENTS
-    #
-    # """step1：Implement a custom Agent"""
-    # @AGENTS.register_module()
-    # class AlgorithmicTradingDQN(AgentBase):
-    #     def __init__(self, **kwargs):
-    #         super(AlgorithmicTradingDQN,
-    #               self).__init__(**kwargs)
-    #
-    # """step2: Load configuration file"""
-    # def parse_args():
-    #     parser = argparse.ArgumentParser(
-    #         description='Load configuration file')
-    #     parser.add_argument("--config",
-    #         default="at_dqn.py",
-    #         help="configuration file path")
-    #     args = parser.parse_args()
-    #     return args
-    # args = parse_args()
-    # cfg = Config.fromfile(args.config)
-    # cfg = replace_cfg_vals(cfg)
-    # """step3: Build dataset"""
-    # dataset = build_dataset(cfg)
-    # """step4: Build enviroment"""
-    # train_environment = build_environment(cfg,
-    #                     default_args=dict(
-    #                         dataset=dataset, task="train"))
-    #
-    # valid_environment = build_environment(cfg,
-    #                     default_args=dict(
-    #                         dataset=dataset, task="valid"))
-    # test_environment = build_environment(cfg,
-    #                     default_args=dict(
-    #                         dataset=dataset, task="test"))
-    # """step5: Build Agent"""
-    # optimizer=build_optimizer(cfg)
-    # criterion = build_loss(cfg)
-    # net = build_net(cfg)
-    # agent = build_agent(cfg, default_args=dict(
-    #                          net=net,
-    #                          optimizer=optimizer,
-    #                          riterion=criterion))
-    # """step6: Build Trainer"""
-    # trainer = build_trainer(cfg,
-    #                         default_args=dict(
-    #                         train_environment=train_environment,
-    #                         valid_environment=valid_environment,
-    #                         test_environment=test_environment,
-    #                         agent=agent))
-    # """step7: Train and Valid"""
-    # trainer.train_and_valid()
-    # """step8: Test"""
-    # trainer.test()
 

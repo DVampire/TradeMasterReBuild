@@ -52,7 +52,6 @@ class AlgorithmicTradingTrainer(Trainer):
         self.state_dim = self.agent.state_dim
         self.action_dim = self.agent.action_dim
         self.epochs = int(get_attr(kwargs, "epochs", 20))
-        self.eval_times = int(get_attr(kwargs, "eval_times", 3))  # number of times that get the average episodic cumulative return
 
         self.init_before_training()
 
@@ -105,16 +104,15 @@ class AlgorithmicTradingTrainer(Trainer):
                                   max_size=self.buffer_size,
                                   state_dim=self.state_dim,
                                   action_dim=1 if self.if_discrete else self.action_dim)
-            buffer_items = self.agent.explore_env(self.train_environment, self.horizon_len * self.eval_times, if_random=True)
+            buffer_items = self.agent.explore_env(self.train_environment, self.horizon_len, if_random=True)
             buffer.update(buffer_items)  # warm up for ReplayBuffer
         else:
             buffer = []
 
         valid_score_list = []
-        if_train = True
         epoch = 1
         print("Train Episode: [{}/{}]".format(epoch, self.epochs))
-        while if_train:
+        while True:
             buffer_items = self.agent.explore_env(self.train_environment, self.horizon_len)
             exp_r = buffer_items[2].mean().item()
             if self.if_off_policy:
@@ -148,8 +146,11 @@ class AlgorithmicTradingTrainer(Trainer):
                            epoch=epoch,
                            save=self.agent.get_save())
                 epoch += 1
-                print("Train Episode: [{}/{}]".format(epoch, self.epochs))
-            if_train = epoch <= self.epochs
+                if epoch <= self.epochs:
+                    print("Train Episode: [{}/{}]".format(epoch, self.epochs))
+
+            if epoch > self.epochs:
+                break
 
         max_index = np.argmax(valid_score_list)
         save_best_model(
