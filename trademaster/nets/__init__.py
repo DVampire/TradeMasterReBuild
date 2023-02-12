@@ -9,5 +9,4 @@ from .eiie import EIIECritic
 from .sarl import LSTMClf
 from .sarl import mLSTMClf
 from .eteo import ETEOStacked
-from .eteo import ETEOLSTM
 from .pd import PDNet

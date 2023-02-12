@@ -209,18 +209,20 @@ loss = dict(type='MSELoss')
 
 optimizer = dict(type='Adam', lr=0.001)
 
-act_net = dict(
+act = dict(
     type="ETEOStacked",
-    length=None,
-    features=None,
+    dims=[128,128],
+    time_steps=10,
     action_dim=2,
-    nodes=128
+    state_dim =10,
+    explore_rate=0.25
 )
 
-cri_net = dict(
+cri = dict(
     type="ETEOStacked",
-    length=None,
-    features=None,
+    dims=[128,128],
+    time_steps=10,
     action_dim=2,
-    nodes=128
+    state_dim =10,
+    explore_rate=0.25
 )

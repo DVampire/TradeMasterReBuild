@@ -130,7 +130,7 @@ class AlgorithmicTradingTrainer(Trainer):
                 episode_reward_sum = 0.0  # sum of rewards in an episode
                 while True:
                     tensor_state = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
-                    tensor_action = self.agent.act(tensor_state)
+                    tensor_action = self.agent.get_action(tensor_state)
                     if self.if_discrete:
                         tensor_action = tensor_action.argmax(dim=1)
                     action = tensor_action.detach().cpu().numpy()[

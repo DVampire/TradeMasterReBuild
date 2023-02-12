@@ -1,16 +1,18 @@
 
-act_net = dict(
-    type = "ETEOStacked",
-    length = None,
-    features = None,
-    action_dim = 2,
-    nodes=128
+act = dict(
+    type="ETEOStacked",
+    dims=[128,128],
+    time_steps=10,
+    action_dim=2,
+    state_dim =10,
+    explore_rate=0.25
 )
 
-cri_net = dict(
-    type = "ETEOStacked",
-    length = None,
-    features = None,
-    action_dim = 2,
-    nodes=128
+cri = dict(
+    type="ETEOStacked",
+    dims=[128,128],
+    time_steps=10,
+    action_dim=2,
+    state_dim =10,
+    explore_rate=0.25
 )

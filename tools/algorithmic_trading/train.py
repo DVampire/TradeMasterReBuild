@@ -76,9 +76,7 @@ def test_dqn():
                                                state_dim = state_dim,
                                                act = act,
                                                cri = cri,
-                                               act_optimizer=act_optimizer,
-                                               cri_optimizer=cri_optimizer,
-                                               criterion=criterion,
+
                                                device=device))
 
     if task_name.startswith("style_test"):
