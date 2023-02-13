@@ -4,13 +4,7 @@ import torch.nn as nn
 from .builder import NETS
 from .custom import Net
 from torch import Tensor
-
-def build_mlp(dims: [int]) -> nn.Sequential:  # MLP (MultiLayer Perceptron)
-    net_list = []
-    for i in range(len(dims) - 1):
-        net_list.extend([nn.Linear(dims[i], dims[i + 1]), nn.ReLU()])
-    del net_list[-1]  # remove the activation of output layer
-    return nn.Sequential(*net_list)
+from trademaster.utils import build_mlp
 
 @NETS.register_module()
 class QNet(Net):
