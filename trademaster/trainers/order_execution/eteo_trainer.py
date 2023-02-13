@@ -34,7 +34,7 @@ class OrderExecutionETEOTrainer(Trainer):
 
         self.if_remove = get_attr(kwargs, "if_remove", False)
         self.if_discrete = get_attr(kwargs, "if_discrete", False)  # discrete or continuous action space
-        self.if_off_policy = get_attr(kwargs, "if_off_policy", True)
+        self.if_off_policy = get_attr(kwargs, "if_off_policy", False)
         self.if_keep_save = get_attr(kwargs, "if_keep_save",
                                      True)  # keeping save the checkpoint. False means save until stop training.
         self.if_over_write = get_attr(kwargs, "if_over_write",
@@ -47,13 +47,13 @@ class OrderExecutionETEOTrainer(Trainer):
             self.horizon_len = int(
                 get_attr(kwargs, "horizon_len", 512))  # collect horizon_len step while exploring, then update networks
             self.buffer_size = int(
-                get_attr(kwargs, "buffer_size", 1e6))  # ReplayBuffer size. First in first out for off-policy.
+                get_attr(kwargs, "buffer_size", 512))  # ReplayBuffer size. First in first out for off-policy.
         else:  # on-policy
-            self.batch_size = int(get_attr(kwargs, "batch_size", 128))  # num of transitions sampled from replay buffer.
+            self.batch_size = int(get_attr(kwargs, "batch_size", 64))  # num of transitions sampled from replay buffer.
             self.horizon_len = int(
-                get_attr(kwargs, "horizon_len", 2048))  # collect horizon_len step while exploring, then update network
+                get_attr(kwargs, "horizon_len", 512))  # collect horizon_len step while exploring, then update network
             self.buffer_size = int(
-                get_attr(kwargs, "buffer_size", None))  # ReplayBuffer size. Empty the ReplayBuffer for on-policy.
+                get_attr(kwargs, "buffer_size", 512))  # ReplayBuffer size. Empty the ReplayBuffer for on-policy.
 
         self.state_dim = self.agent.state_dim
         self.action_dim = self.agent.action_dim

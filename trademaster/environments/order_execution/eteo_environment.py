@@ -371,7 +371,9 @@ class OrderExecutionETEOEnvironment(Environments):
 
             stats = OrderedDict(
                 {
+                    "Cash Left": ["{:04f}".format(cash_left)],
                     "TWAP": ["{:04f}".format(TWAP_value)],
+                    "Cash Left Ratio": ["{:04f}%".format(100 * (cash_left - TWAP_value) / TWAP_value)],
                 }
             )
             table = print_metrics(stats)

@@ -49,16 +49,20 @@ def test_pd():
     train_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="train"))
     valid_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="valid"))
     test_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="test"))
+
     if task_name.startswith("style_test"):
         test_style_environments=[]
         for i,path in enumerate(dataset.test_style_paths):
             test_style_environments.append(build_environment(cfg, default_args=dict(dataset=dataset, task="test_style",style_test_path=path,task_index=i)))
 
-    n_action = train_environment.action_space.shape[0]
-    n_state = train_environment.observation_space.shape[0]
+    action_dim = train_environment.action_dim
+    state_dim = train_environment.state_dim
+
     input_feature = train_environment.observation_space.shape[-1]
     _, info = train_environment.reset()
     private_feature = info["private_state"].shape[-1]
+    print(action_dim, state_dim, input_feature, private_feature)
+    exit()
 
     cfg.net.update(dict(input_feature=input_feature, private_feature=private_feature))
 

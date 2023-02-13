@@ -203,6 +203,7 @@ trainer = dict(
     epochs=10,
     work_dir=work_dir,
     if_remove=True,
+    if_off_policy=True,
 )
 
 loss = dict(type='MSELoss')

@@ -57,6 +57,9 @@ class OrderExecutionPDEnvironment(Environments):
             shape=(self.state_length, len(self.tech_indicator_list)),
         )
 
+        self.action_dim = self.action_space.shape[0]
+        self.state_dim = self.observation_space.shape[-1]
+
         self.day = self.state_length
         self.data_public_imperfect = self.df.iloc[
             self.day - self.state_length:self.day, :]

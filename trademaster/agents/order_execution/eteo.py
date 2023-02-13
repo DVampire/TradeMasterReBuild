@@ -85,7 +85,7 @@ class OrderExecutionETEO(AgentBase):
             states[step] = state
         return states
 
-    def explore_env(self, env, horizon_len: int, if_random: bool = False) -> Tuple[Tensor, ...]:
+    def explore_env(self, env, horizon_len: int) -> Tuple[Tensor, ...]:
         states = torch.zeros((horizon_len, self.num_envs, self.time_steps, self.state_dim), dtype=torch.float32).to(self.device)
         actions = torch.zeros((horizon_len, self.num_envs, 2), dtype=torch.int32).to(self.device)  # different
         rewards = torch.zeros((horizon_len, self.num_envs), dtype=torch.float32).to(self.device)
@@ -94,8 +94,7 @@ class OrderExecutionETEO(AgentBase):
         state = self.last_state  # last_state.shape = (1, time_steps, state_dim) for a single env.
         get_action = self.get_action
         for t in range(horizon_len):
-            action = np.random.randint(self.action_dim, size=(2,)) if if_random \
-                else get_action(state.unsqueeze(0))  # different
+            action = get_action(state.unsqueeze(0))
             action = torch.tensor(action, dtype=torch.float32, device=self.device)
             states[t] = state
 
@@ -142,25 +141,6 @@ class OrderExecutionETEO(AgentBase):
             ])
         return action
 
-    def save_transication(self, s, a, r, s_, r_previous, done):
-        # here, the s,a,r,s_,r_previous are all torch tensor and in the GPU
-        # self.memory_size = self.memory_size + 1
-        if self.memory_size <= self.memory_capacity:
-            self.inputs.append(s)
-            self.actions.append(a)
-            self.rewards.append(r)
-            self.next_states.append(s_)
-            self.previous_rewards.append(r_previous)
-            self.dones.append(done)
-        else:
-            index = self.memory_size % self.memory_capacity
-            self.inputs[index - 1] = s
-            self.actions[index - 1] = a
-            self.rewards[index - 1] = r
-            self.next_states[index - 1] = s_
-            self.previous_rewards[index - 1] = r_previous
-            self.dones[index - 1] = done
-
     def update_net(self, buffer: ReplayBuffer) -> Tuple[float, ...]:
         update_times = int(buffer.add_size * self.repeat_times)
         assert update_times >= 1
@@ -168,15 +148,13 @@ class OrderExecutionETEO(AgentBase):
         for _ in range(update_times):
             state, action, reward, undone, next_state = buffer.sample(self.batch_size)
             action_volume, action_price, v = self.cri_target(next_state)
-
             td_target = reward + self.gamma * v * undone
-            action_volume, action_price, v = self.cri_target(state)
 
+            action_volume, action_price, v = self.cri_target(state)
             mean = torch.cat((action_volume[:, 0].unsqueeze(1),
                               action_price[:,0].unsqueeze(1)), dim=1)
             std = torch.cat((torch.relu(action_volume[:, 1].unsqueeze(1)) + 0.001,
                              torch.relu(action_price[:, 1].unsqueeze(1)) + 0.001), dim=1)
-
             old_dis = torch.distributions.normal.Normal(mean, std)
 
             log_prob_old = old_dis.log_prob(action).float()
