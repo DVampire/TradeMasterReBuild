@@ -6,19 +6,14 @@ sys.path.append(ROOT)
 
 from ..builder import AGENTS
 from ..custom import AgentBase
-from trademaster.utils import get_attr, GeneralReplayBuffer
+from trademaster.utils import get_attr, GeneralReplayBuffer, get_optim_param
 import torch
 from torch import Tensor
 from typing import Tuple
 from copy import deepcopy
 from torch.nn.utils import clip_grad_norm_
 from types import MethodType
-
-def get_optim_param(optimizer: torch.optim) -> list:
-    params_list = []
-    for params_dict in optimizer.state_dict()["state"].values():
-        params_list.extend([t for t in params_dict.values() if isinstance(t, torch.Tensor)])
-    return params_list
+from collections import namedtuple
 
 @AGENTS.register_module()
 class AlgorithmicTradingDQN(AgentBase):
@@ -54,11 +49,10 @@ class AlgorithmicTradingDQN(AgentBase):
         self.act_optimizer.parameters = MethodType(get_optim_param, self.act_optimizer)
         self.cri_optimizer.parameters = MethodType(get_optim_param, self.cri_optimizer)
 
-        self.if_use_per = get_attr(kwargs, 'if_use_per', False)  # use PER (Prioritized Experience Replay)
-        if not self.if_use_per:
-            self.criterion = get_attr(kwargs, "criterion", None)
-            self.get_obj_critic = self.get_obj_critic_raw
+        self.criterion = get_attr(kwargs, "criterion", None)
         self.act_target = self.cri_target = deepcopy(self.act)
+
+        self.transition = get_attr(kwargs, "transition", namedtuple("Transition", ['state','action','reward','undone','next_state']))
 
     def get_save(self):
         models = {
@@ -102,12 +96,20 @@ class AlgorithmicTradingDQN(AgentBase):
 
         rewards *= self.reward_scale
         undones = 1.0 - dones.type(torch.float32)
-        return states, actions, rewards, undones, next_states
+
+        transition = self.transition(
+            state = states,
+            action = actions,
+            reward = rewards,
+            undone = undones,
+            next_state = next_states
+        )
+        return transition
 
     def get_action(self, state: Tensor)-> Tensor:
         return self.act(state)
 
-    def get_obj_critic_raw(self, buffer: GeneralReplayBuffer, batch_size: int) -> Tuple[Tensor, Tensor]:
+    def get_obj_critic(self, buffer: GeneralReplayBuffer, batch_size: int) -> Tuple[Tensor, Tensor]:
         """
         Calculate the loss of the network and predict Q values with **uniform sampling**.
 
@@ -116,8 +118,13 @@ class AlgorithmicTradingDQN(AgentBase):
         :return: the loss of the network and Q values.
         """
         with torch.no_grad():
-            state, action, reward, undone, next_s = buffer.sample(batch_size)
-            next_q = self.cri_target(next_s).max(dim=1, keepdim=True)[0].squeeze(1)
+            transition = buffer.sample(batch_size)
+            state = transition.state
+            action = transition.action
+            reward = transition.reward
+            undone = transition.undone
+            next_state = transition.next_state
+            next_q = self.cri_target(next_state).max(dim=1, keepdim=True)[0].squeeze(1)
             q_label = reward + undone * self.gamma * next_q
 
         q_value = self.cri(state).gather(1, action.long()).squeeze(1)

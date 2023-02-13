@@ -18,16 +18,16 @@ class PortfolioManagementEIIE(AgentBase):
 
         self.device = get_attr(kwargs, "device", None)
 
-        self.act_net = get_attr(kwargs, "act_net", None).to(self.device)
-        self.cri_net = get_attr(kwargs, "cri_net", None).to(self.device)
+        self.act = get_attr(kwargs, "act", None).to(self.device)
+        self.cri = get_attr(kwargs, "cri", None).to(self.device)
 
         self.act_optimizer = get_attr(kwargs, "act_optimizer", None)
         self.cri_optimizer = get_attr(kwargs, "cri_optimizer", None)
 
-        self.loss = get_attr(kwargs, "loss", None)
+        self.criterion = get_attr(kwargs, "criterion", None)
 
-        self.n_action = get_attr(kwargs, "n_action", None)
-        self.n_state = get_attr(kwargs, "n_state", None)
+        self.action_dim = get_attr(kwargs, "action_dim", None)
+        self.state_dim = get_attr(kwargs, "state_dim", None)
 
         self.memory_counter = 0  # for storing memory
         self.memory_capacity = get_attr(kwargs, "memory_capacity", 1000)
@@ -45,8 +45,8 @@ class PortfolioManagementEIIE(AgentBase):
 
     def get_save(self):
         models = {
-            "act_net":self.act_net,
-            "cri_net":self.cri_net
+            "act":self.act,
+            "cri":self.cri
         }
         optimizers = {
             "act_optimizer":self.act_optimizer,
@@ -65,7 +65,6 @@ class PortfolioManagementEIIE(AgentBase):
             r,
             s_,
     ):  # 定义记忆存储函数 (这里输入为一个transition)
-
         self.memory_counter = self.memory_counter + 1
         if self.memory_counter < self.memory_capacity:
             self.s_memory.append(s)
@@ -81,7 +80,7 @@ class PortfolioManagementEIIE(AgentBase):
 
     def compute_single_action(self, state):
         state = torch.from_numpy(state).float().to(self.device)
-        action = self.act_net(state)
+        action = self.act(state)
         action = action.detach().cpu().numpy()
         return action
 
@@ -103,20 +102,20 @@ class PortfolioManagementEIIE(AgentBase):
         for bs, ba, br, bs_ in zip(s_learn, a_learn, r_learn, sn_learn):
             # update actor
             bs, ba, br, bs_ = bs.to(self.device), ba.to(self.device), br.to(self.device), bs_.to(self.device)
-            a = self.act_net(bs)
-            q = self.cri_net(bs, a)
+            a = self.act(bs)
+            q = self.cri(bs, a)
             a_loss = -torch.mean(q)
             self.act_optimizer.zero_grad()
             a_loss.backward(retain_graph=True)
             self.act_optimizer.step()
             # update critic
-            a_ = self.act_net(bs_)
-            q_ = self.cri_net(bs_, a_.detach())
+            a_ = self.act(bs_)
+            q_ = self.cri(bs_, a_.detach())
             q_target = br + self.gamma * q_
-            q_eval = self.cri_net(bs, ba.detach())
+            q_eval = self.cri(bs, ba.detach())
             # print(q_eval)
             # print(q_target)
-            td_error = self.loss(q_target.detach(), q_eval)
+            td_error = self.criterion(q_target.detach(), q_eval)
             # print(td_error)
             self.act_optimizer.zero_grad()
             td_error.backward()

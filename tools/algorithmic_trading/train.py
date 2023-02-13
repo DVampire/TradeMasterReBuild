@@ -19,6 +19,7 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
+from trademaster.transition.builder import build_transition
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
@@ -72,6 +73,8 @@ def test_dqn():
 
     criterion = build_loss(cfg)
 
+    transition = build_transition(cfg)
+
     agent = build_agent(cfg, default_args=dict(action_dim = action_dim,
                                                state_dim = state_dim,
                                                act = act,
@@ -79,6 +82,7 @@ def test_dqn():
                                                act_optimizer = act_optimizer,
                                                cri_optimizer = cri_optimizer,
                                                criterion = criterion,
+                                               transition = transition,
                                                device=device))
 
     if task_name.startswith("style_test"):

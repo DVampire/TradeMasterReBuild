@@ -55,6 +55,9 @@ class PortfolioManagementEIIEEnvironment(Environments):
                    self.state_space_shape,
                    self.length_day))
 
+        self.action_dim = self.action_space.shape[0]
+        self.state_dim = self.observation_space.shape[0]
+
         self.data = self.df.loc[self.day - self.length_day + 1:self.day, :]
         self.state = np.array([[
             self.data[self.data.tic == tic][tech].values.tolist()

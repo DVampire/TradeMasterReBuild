@@ -58,7 +58,7 @@ class PortfolioManagementEIIETrainer(Trainer):
             episode_reward_sum = 0
             while True:
                 old_state = s
-                action = self.agent.act_net(torch.from_numpy(s).float().to(self.device))
+                action = self.agent.act(torch.from_numpy(s).float().to(self.device))
                 s, reward, done, _ = self.train_environment.step(
                     action.cpu().detach().numpy())
                 self.agent.store_transition(
@@ -86,7 +86,7 @@ class PortfolioManagementEIIETrainer(Trainer):
             episode_reward_sum = 0
             while True:
                 old_state = s
-                action = self.agent.act_net(torch.from_numpy(s).float().to(self.device))
+                action = self.agent.act(torch.from_numpy(s).float().to(self.device))
                 s, reward, done, _ = self.valid_environment.step(
                     action.cpu().detach().numpy())
 

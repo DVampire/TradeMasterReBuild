@@ -1,6 +1,7 @@
 import inspect
 import os
 import re
+import torch
 
 import mmcv
 from mmcv import Config
@@ -8,6 +9,12 @@ from mmcv.utils import Registry
 from mmcv.utils import print_log
 import numpy as np
 import prettytable
+
+def get_optim_param(optimizer: torch.optim) -> list:
+    params_list = []
+    for params_dict in optimizer.state_dict()["state"].values():
+        params_list.extend([t for t in params_dict.values() if isinstance(t, torch.Tensor)])
+    return params_list
 
 def print_metrics(stats):
     table = prettytable.PrettyTable()

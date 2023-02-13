@@ -49,7 +49,7 @@ loss = dict(type='MSELoss')
 
 optimizer = dict(type='Adam', lr=0.001)
 
-act_net = dict(
+act = dict(
     type="EIIEConv",
     n_input=None,
     n_output=2,
@@ -59,7 +59,7 @@ act_net = dict(
     n_hidden=32
 )
 
-cri_net = dict(
+cri = dict(
     type="EIIECritic",
     n_input=None,
     n_output=1,

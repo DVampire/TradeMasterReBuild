@@ -1,5 +1,5 @@
 
-act_net = dict(
+act = dict(
     type = "EIIEConv",
     n_input = None,
     n_output=1,
@@ -9,7 +9,7 @@ act_net = dict(
     n_hidden=32
 )
 
-cri_net = dict(
+cri = dict(
     type = "EIIECritic",
     n_input = None,
     n_output=1,
