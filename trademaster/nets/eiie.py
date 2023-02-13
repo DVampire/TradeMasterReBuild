@@ -71,5 +71,6 @@ class EIIECritic(Net):
         para = self.para.repeat(x.shape[0], 1)
 
         x = torch.cat((x, para, a), dim=1)
-        x = self.linear2(x)
+        # x = self.linear2(x)
+        x = x.mean(dim = 1, keepdim=True)
         return x
