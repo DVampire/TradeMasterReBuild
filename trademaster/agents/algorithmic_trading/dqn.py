@@ -6,7 +6,7 @@ sys.path.append(ROOT)
 
 from ..builder import AGENTS
 from ..custom import AgentBase
-from trademaster.utils import get_attr, ReplayBuffer
+from trademaster.utils import get_attr, GeneralReplayBuffer
 import torch
 from torch import Tensor
 from typing import Tuple
@@ -28,6 +28,7 @@ class AlgorithmicTradingDQN(AgentBase):
         self.num_envs = int(get_attr(kwargs, "num_envs", 1))  # the number of sub envs in vectorized env. `num_envs=1` in single env.
         self.device = get_attr(kwargs, "device", torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu"))
         self.max_step = get_attr(kwargs,"max_step", 12345)  # the max step number of an episode. 'set as 12345 in default.
+
         self.state_dim = get_attr(kwargs, "state_dim", 10) # vector dimension (feature number) of state
         self.action_dim = get_attr(kwargs, "action_dim", 2) # vector dimension (feature number) of action
 
@@ -54,10 +55,7 @@ class AlgorithmicTradingDQN(AgentBase):
         self.cri_optimizer.parameters = MethodType(get_optim_param, self.cri_optimizer)
 
         self.if_use_per = get_attr(kwargs, 'if_use_per', False)  # use PER (Prioritized Experience Replay)
-        if self.if_use_per:
-            self.criterion = get_attr(kwargs, "criterion", None)
-            self.get_obj_critic = self.get_obj_critic_per
-        else:
+        if not self.if_use_per:
             self.criterion = get_attr(kwargs, "criterion", None)
             self.get_obj_critic = self.get_obj_critic_raw
         self.act_target = self.cri_target = deepcopy(self.act)
@@ -84,12 +82,12 @@ class AlgorithmicTradingDQN(AgentBase):
         actions = torch.zeros((horizon_len, self.num_envs, 1), dtype=torch.int32).to(self.device)  # different
         rewards = torch.zeros((horizon_len, self.num_envs), dtype=torch.float32).to(self.device)
         dones = torch.zeros((horizon_len, self.num_envs), dtype=torch.bool).to(self.device)
+        next_states = torch.zeros((horizon_len, self.num_envs, self.state_dim), dtype=torch.float32).to(self.device)
 
         state = self.last_state  # last_state.shape = (state_dim, ) for a single env.
         get_action = self.act.get_action
         for t in range(horizon_len):
-            action = torch.randint(self.action_dim, size=(1, 1)) if if_random \
-                else get_action(state.unsqueeze(0))  # different
+            action = torch.randint(self.action_dim, size=(1, 1)) if if_random else get_action(state.unsqueeze(0))
             states[t] = state
 
             ary_action = action[0, 0].detach().cpu().numpy()
@@ -98,17 +96,18 @@ class AlgorithmicTradingDQN(AgentBase):
             actions[t] = action
             rewards[t] = reward
             dones[t] = done
+            next_states[t] = state
 
         self.last_state = state
 
         rewards *= self.reward_scale
         undones = 1.0 - dones.type(torch.float32)
-        return states, actions, rewards, undones
+        return states, actions, rewards, undones, next_states
 
     def get_action(self, state: Tensor)-> Tensor:
         return self.act(state)
 
-    def get_obj_critic_raw(self, buffer: ReplayBuffer, batch_size: int) -> Tuple[Tensor, Tensor]:
+    def get_obj_critic_raw(self, buffer: GeneralReplayBuffer, batch_size: int) -> Tuple[Tensor, Tensor]:
         """
         Calculate the loss of the network and predict Q values with **uniform sampling**.
 
@@ -125,27 +124,6 @@ class AlgorithmicTradingDQN(AgentBase):
         obj_critic = self.criterion(q_value, q_label)
         return obj_critic, q_value
 
-    def get_obj_critic_per(self, buffer: ReplayBuffer, batch_size: int) -> Tuple[Tensor, Tensor]:
-        """
-        Calculate the loss of the network and predict Q values with **Prioritized Experience Replay (PER)**.
-
-        :param buffer: the ReplayBuffer instance that stores the trajectories.
-        :param batch_size: the size of batch data for Stochastic Gradient Descent (SGD).
-        :return: the loss of the network and Q values.
-        """
-        with torch.no_grad():
-            state, action, reward, undone, next_s, is_weights = buffer.sample(batch_size)
-
-            next_q = self.cri_target(next_s).max(dim=1, keepdim=True)[0].squeeze(1)
-            q_label = reward + undone * self.gamma * next_q
-
-        q_value = self.cri(state).gather(1, action.long()).squeeze(1)
-        td_error = self.criterion(q_value, q_label)  # or td_error = (q_value - q_label).abs()
-        obj_critic = (td_error * is_weights).mean()
-
-        buffer.td_error_update(td_error.detach())
-        return obj_critic, q_value
-
     def optimizer_update(self, optimizer: torch.optim, objective: Tensor):
         """minimize the optimization objective via update the network parameters
 
@@ -157,7 +135,7 @@ class AlgorithmicTradingDQN(AgentBase):
         clip_grad_norm_(parameters=optimizer.param_groups[0]["params"], max_norm=self.clip_grad_norm)
         optimizer.step()
 
-    def update_net(self, buffer: ReplayBuffer) -> Tuple[float, ...]:
+    def update_net(self, buffer: GeneralReplayBuffer) -> Tuple[float, ...]:
         obj_critics = 0.0
         obj_actors = 0.0
 
