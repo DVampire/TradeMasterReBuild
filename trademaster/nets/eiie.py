@@ -63,7 +63,7 @@ class EIIECritic(Net):
         if len(x.shape) >= 4:
             x = x.view(x.shape[0], x.shape[1], -1)
         lstm_out, _ = self.lstm(x)
-        x = self.linear(lstm_out)
+        x = self.linear1(lstm_out)
 
         x = self.act(x)
 
