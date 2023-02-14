@@ -55,6 +55,7 @@ class PortfolioManagementSARLTrainer(Trainer):
         self.seeds_list = get_attr(kwargs, "seeds_list", (12345,))
         self.random_seed = random.choice(self.seeds_list)
         self.if_remove = get_attr(kwargs, "if_remove", False)
+        self.num_threads = int(get_attr(kwargs, "num_threads", 8))
 
         ray.init(ignore_reinit_error=True)
         self.trainer_name = select_algorithms(self.agent_name)

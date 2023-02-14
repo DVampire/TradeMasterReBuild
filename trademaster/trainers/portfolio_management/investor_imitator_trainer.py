@@ -28,6 +28,7 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
         self.if_remove = get_attr(kwargs, "if_remove", False)
         self.seeds_list = get_attr(kwargs, "seeds_list", (12345,))
         self.random_seed = random.choice(self.seeds_list)
+        self.num_threads = int(get_attr(kwargs, "num_threads", 8))
 
         self.work_dir = os.path.join(ROOT, self.work_dir)
         if not os.path.exists(self.work_dir):
