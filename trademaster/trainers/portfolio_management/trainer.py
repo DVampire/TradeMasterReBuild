@@ -54,12 +54,10 @@ class PortfolioManagementTrainer(Trainer):
         self.epochs = get_attr(kwargs, "epochs", 20)
         self.dataset = get_attr(kwargs, "dataset", None)
         self.work_dir = get_attr(kwargs, "work_dir", None)
+        self.work_dir = os.path.join(ROOT, self.work_dir)
         self.seeds_list = get_attr(kwargs, "seeds_list", (12345,))
         self.random_seed = random.choice(self.seeds_list)
-
-        self.work_dir = os.path.join(ROOT, self.work_dir)
-        if not os.path.exists(self.work_dir):
-            os.makedirs(self.work_dir)
+        self.if_remove = get_attr(kwargs, "if_remove", False)
 
         ray.init(ignore_reinit_error=True)
         self.trainer_name = select_algorithms(self.agent_name)
@@ -67,11 +65,6 @@ class PortfolioManagementTrainer(Trainer):
         self.configs["env_config"] = dict(dataset=self.dataset, task="train")
         register_env("portfolio_management", env_creator)
 
-        self.if_remove = get_attr(kwargs, "if_remove", False)
-
-        self.checkpoints_path = os.path.join(self.work_dir, "checkpoints")
-        if not os.path.exists(self.checkpoints_path):
-            os.makedirs(self.checkpoints_path)
 
         self.init_before_training()
 
