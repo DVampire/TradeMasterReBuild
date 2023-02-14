@@ -25,7 +25,9 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
         self.test_environment = get_attr(kwargs, "test_environment", None)
         self.agent = get_attr(kwargs, "agent", None)
         self.work_dir = get_attr(kwargs, "work_dir", None)
-        self.seeds_list = get_attr(kwargs, "seeds_list", [12345])
+        self.if_remove = get_attr(kwargs, "if_remove", False)
+        self.seeds_list = get_attr(kwargs, "seeds_list", (12345,))
+        self.random_seed = random.choice(self.seeds_list)
 
         self.work_dir = os.path.join(ROOT, self.work_dir)
         if not os.path.exists(self.work_dir):
@@ -35,16 +37,33 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
         if not os.path.exists(self.checkpoints_path):
             os.makedirs(self.checkpoints_path)
 
-        self.set_seed(random.choice(self.seeds_list))
+        self.init_before_training()
 
-    def set_seed(self, seed):
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
+    def init_before_training(self):
+        random.seed(self.random_seed)
+        torch.cuda.manual_seed(self.random_seed)
+        torch.cuda.manual_seed_all(self.random_seed)
+        np.random.seed(self.random_seed)
+        torch.manual_seed(self.random_seed)
         torch.backends.cudnn.benckmark = False
         torch.backends.cudnn.deterministic = True
+        torch.set_num_threads(self.num_threads)
+        torch.set_default_dtype(torch.float32)
+
+        '''remove history'''
+        if self.if_remove is None:
+            self.if_remove = bool(input(f"| Arguments PRESS 'y' to REMOVE: {self.work_dir}? ") == 'y')
+        if self.if_remove:
+            import shutil
+            shutil.rmtree(self.work_dir, ignore_errors=True)
+            print(f"| Arguments Remove work_dir: {self.work_dir}")
+        else:
+            print(f"| Arguments Keep work_dir: {self.work_dir}")
+        os.makedirs(self.work_dir, exist_ok=True)
+
+        self.checkpoints_path = os.path.join(self.work_dir, "checkpoints")
+        if not os.path.exists(self.checkpoints_path):
+            os.makedirs(self.checkpoints_path, exist_ok=True)
 
     def train_and_valid(self):
 
