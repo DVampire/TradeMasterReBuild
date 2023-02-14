@@ -56,16 +56,16 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
             actions = []
             episode_reward_sum = 0
             while True:
-                action = self.agent.select_action(state)
+                action = self.agent.get_action(state)
                 state, reward, done, _ = self.train_environment.step(action)
                 actions.append(action)
                 episode_reward_sum += reward
-                self.agent.act_net.rewards.append(reward)
+                self.agent.act.rewards.append(reward)
                 if done:
                     print("Train Episode Reward Sum: {:04f}".format(episode_reward_sum))
                     break
 
-            self.agent.learn()
+            self.agent.update_net()
 
             save_model(self.checkpoints_path,
                        epoch=epoch,
@@ -76,7 +76,7 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
 
             episode_reward_sum = 0
             while True:
-                action = self.agent.select_action(state)
+                action = self.agent.get_action(state)
                 state, reward, done, _ = self.valid_environment.step(action)
                 episode_reward_sum += reward
                 if done:
@@ -99,7 +99,7 @@ class PortfolioManagementInvestorImitatorTrainer(Trainer):
         state = self.test_environment.reset()
         episode_reward_sum = 0
         while True:
-            action = self.agent.select_action(state)
+            action = self.agent.get_action(state)
             state, reward, done, _ = self.test_environment.step(action)
             episode_reward_sum += reward
             if done:

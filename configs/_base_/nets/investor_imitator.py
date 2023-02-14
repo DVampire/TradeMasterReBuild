@@ -1,6 +1,6 @@
-act_net = dict(
+act = dict(
     type='MLPCls',
-    n_input = None,
-    n_hidden = 128,
-    n_output = None
+    input_dim = None,
+    dims = [128],
+    output_dim = None
 )

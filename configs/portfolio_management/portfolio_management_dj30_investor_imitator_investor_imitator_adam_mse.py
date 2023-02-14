@@ -48,9 +48,9 @@ trainer = dict(
 loss = dict(type='MSELoss')
 optimizer = dict(type='Adam', lr=0.001)
 
-act_net = dict(
+act = dict(
     type='MLPCls',
-    n_input = None,
-    n_hidden = 128,
-    n_output = None
+    input_dim = None,
+    dims = [128],
+    output_dim = None
 )
