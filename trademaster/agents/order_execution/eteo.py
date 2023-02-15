@@ -27,7 +27,7 @@ class OrderExecutionETEO(AgentBase):
 
         '''network'''
         self.act = self.act_target = get_attr(kwargs, "act", None).to(self.device)
-        self.cri = self.cri_target = get_attr(kwargs, "cri", None) if get_attr(kwargs, "cri", None) else self.act
+        self.cri = self.cri_target = get_attr(kwargs, "cri", None).to(self.device) if get_attr(kwargs, "cri", None) else self.act
 
         '''optimizer'''
         self.act_optimizer = get_attr(kwargs, "act_optimizer", None)

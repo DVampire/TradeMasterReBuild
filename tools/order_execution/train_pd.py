@@ -20,6 +20,8 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
+from trademaster.transition.builder import build_transition
+
 from collections import Counter
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
@@ -57,15 +59,14 @@ def test_pd():
 
     action_dim = train_environment.action_dim
     state_dim = train_environment.state_dim
-    input_feature = train_environment.observation_space.shape[-1]
-    state, info = train_environment.reset()
-    private_feature = info["private_state"].shape[-1]
+    public_state_dim = train_environment.public_state_dim
+    private_state_dim = train_environment.private_state_dim
 
-    cfg.act.update(dict(input_feature=input_feature, private_feature=private_feature))
-    cfg.cri.update(dict(input_feature=input_feature, private_feature=private_feature))
+    cfg.act.update(dict(input_feature=public_state_dim, private_feature=private_state_dim))
+    cfg.cri.update(dict(input_feature=public_state_dim, private_feature=private_state_dim))
 
-    act = build_net(cfg.net)
-    cri = build_net(cfg.net)
+    act = build_net(cfg.act)
+    cri = build_net(cfg.cri)
 
     work_dir = os.path.join(ROOT, cfg.trainer.work_dir)
 
@@ -77,14 +78,18 @@ def test_pd():
     cri_optimizer = build_optimizer(cfg, default_args=dict(params=cri.parameters()))
 
     criterion = build_loss(cfg)
+    transition = build_transition(cfg)
 
     agent = build_agent(cfg, default_args=dict(action_dim=action_dim,
                                                state_dim=state_dim,
+                                               public_state_dim = public_state_dim,
+                                               private_state_dim = private_state_dim,
                                                act=act,
                                                cri=cri,
                                                act_optimizer=act_optimizer,
                                                cri_optimizer=cri_optimizer,
                                                criterion=criterion,
+                                               transition=transition,
                                                device=device))
 
     if task_name.startswith("style_test"):

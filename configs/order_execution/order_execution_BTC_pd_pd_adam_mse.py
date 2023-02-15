@@ -14,6 +14,7 @@ _base_ = [
     f"../_base_/losses/{loss_name}.py",
     f"../_base_/optimizers/{optimizer_name}.py",
     f"../_base_/nets/{net_name}.py",
+    f"../_base_/transition/transition.py"
 ]
 
 data = dict(
@@ -49,6 +50,10 @@ data = dict(
 
 environment = dict(
     type="OrderExecutionPDEnvironment",
+)
+
+transition = dict(
+    type = "TransitionPD"
 )
 
 agent = dict(

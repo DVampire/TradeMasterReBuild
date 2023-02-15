@@ -36,7 +36,7 @@ class OrderExecutionETEOTrainer(Trainer):
 
         self.if_remove = get_attr(kwargs, "if_remove", False)
         self.if_discrete = get_attr(kwargs, "if_discrete", False)  # discrete or continuous action space
-        self.if_off_policy = get_attr(kwargs, "if_off_policy", False)
+        self.if_off_policy = get_attr(kwargs, "if_off_policy", True)
         self.if_keep_save = get_attr(kwargs, "if_keep_save",
                                      True)  # keeping save the checkpoint. False means save until stop training.
         self.if_over_write = get_attr(kwargs, "if_over_write",
