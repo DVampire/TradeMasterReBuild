@@ -57,20 +57,15 @@ def test_pd():
 
     action_dim = train_environment.action_dim
     state_dim = train_environment.state_dim
-
     input_feature = train_environment.observation_space.shape[-1]
-    _, info = train_environment.reset()
+    state, info = train_environment.reset()
     private_feature = info["private_state"].shape[-1]
-    print(action_dim, state_dim, input_feature, private_feature)
-    exit()
 
-    cfg.net.update(dict(input_feature=input_feature, private_feature=private_feature))
+    cfg.act.update(dict(input_feature=input_feature, private_feature=private_feature))
+    cfg.cri.update(dict(input_feature=input_feature, private_feature=private_feature))
 
-    t_net = build_net(cfg.net)
-    t_old_net = build_net(cfg.net)
-    s_net = build_net(cfg.net)
-    s_old_net = build_net(cfg.net)
-
+    act = build_net(cfg.net)
+    cri = build_net(cfg.net)
 
     work_dir = os.path.join(ROOT, cfg.trainer.work_dir)
 
@@ -78,19 +73,18 @@ def test_pd():
         os.makedirs(work_dir)
     cfg.dump(osp.join(work_dir, osp.basename(args.config)))
 
-    t_optimizer = build_optimizer(cfg, default_args=dict(params=t_net.parameters()))
-    s_optimizer = build_optimizer(cfg, default_args=dict(params=s_net.parameters()))
-    loss = build_loss(cfg)
+    act_optimizer = build_optimizer(cfg, default_args=dict(params=act.parameters()))
+    cri_optimizer = build_optimizer(cfg, default_args=dict(params=cri.parameters()))
 
-    agent = build_agent(cfg, default_args=dict(n_action=n_action,
-                                               n_state=n_state,
-                                               t_net=t_net,
-                                               t_old_net=t_old_net,
-                                               s_net=s_net,
-                                               s_old_net=s_old_net,
-                                               t_optimizer=t_optimizer,
-                                               s_optimizer=s_optimizer,
-                                               loss=loss,
+    criterion = build_loss(cfg)
+
+    agent = build_agent(cfg, default_args=dict(action_dim=action_dim,
+                                               state_dim=state_dim,
+                                               act=act,
+                                               cri=cri,
+                                               act_optimizer=act_optimizer,
+                                               cri_optimizer=cri_optimizer,
+                                               criterion=criterion,
                                                device=device))
 
     if task_name.startswith("style_test"):

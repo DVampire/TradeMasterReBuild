@@ -8,9 +8,11 @@ sys.path.append(ROOT)
 
 from ..builder import AGENTS
 from ..custom import AgentBase
-from trademaster.utils import get_attr
+from trademaster.utils import get_attr, get_optim_param
 import numpy as np
 import torch
+from types import MethodType
+from copy import deepcopy
 
 
 class PPOtrainer:
@@ -69,22 +71,29 @@ class OrderExecutionPD(AgentBase):
     def __init__(self, **kwargs):
         super(OrderExecutionPD, self).__init__()
 
+        self.num_envs = int(get_attr(kwargs, "num_envs", 1))
         self.device = get_attr(kwargs, "device", None)
 
-        self.t_net = get_attr(kwargs, "t_net", None).to(self.device)
-        self.t_old_net = get_attr(kwargs, "t_old_net", None).to(self.device)
-        self.s_net = get_attr(kwargs, "s_net", None).to(self.device)
-        self.s_old_net = get_attr(kwargs, "s_old_net", None).to(self.device)
-        self.t_optimizer = get_attr(kwargs, "t_optimizer", None)
-        self.s_optimizer = get_attr(kwargs, "s_optimizer", None)
+        '''network'''
+        self.act = get_attr(kwargs, "act", None).to(self.device)
+        self.cri = get_attr(kwargs, "cri", None) if get_attr(kwargs, "cri", None) else self.act
+        self.act_target = deepcopy(self.act)
+        self.cri_target = deepcopy(self.cri)
 
-        self.teacher_ppo = PPOtrainer(net=self.t_net, old_net=self.t_old_net, optimizer=self.t_optimizer)
-        self.student_ppo = PPOtrainer(net=self.s_net, old_net=self.s_old_net, optimizer=self.s_optimizer)
+        '''optimizer'''
+        self.act_optimizer = get_attr(kwargs, "act_optimizer", None)
+        self.cri_optimizer = get_attr(kwargs, "cri_optimizer", None) if get_attr(kwargs, "cri_optimizer",
+                                                                                 None) else self.act_optimizer
+        self.act_optimizer.parameters = MethodType(get_optim_param, self.act_optimizer)
+        self.cri_optimizer.parameters = MethodType(get_optim_param, self.cri_optimizer)
 
-        self.loss = get_attr(kwargs, "loss", None)
+        self.student_ppo = PPOtrainer(net=self.act, old_net=self.act_target, optimizer=self.act_optimizer)
+        self.teacher_ppo = PPOtrainer(net=self.cri, old_net=self.cri_target, optimizer=self.cri_optimizer)
 
-        self.n_action = get_attr(kwargs, "n_action", None)
-        self.n_state = get_attr(kwargs, "n_state", None)
+        self.criterion = get_attr(kwargs, "criterion", None)
+
+        self.action_dim = get_attr(kwargs, "action_dim", None)
+        self.state_dim = get_attr(kwargs, "state_dim", None)
 
         self.memory_student = []
         self.memory_teacher = []

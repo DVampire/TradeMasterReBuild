@@ -6,10 +6,12 @@ import torch
 ROOT = Path(__file__).resolve().parents[3]
 from ..custom import Trainer
 from ..builder import TRAINERS
-from trademaster.utils import get_attr, save_model, load_best_model, save_best_model, ReplayBuffer
+
+from trademaster.utils import get_attr, save_model, load_best_model, save_best_model, GeneralReplayBuffer
 import numpy as np
 import os
 import pandas as pd
+from collections import OrderedDict
 
 @TRAINERS.register_module()
 class OrderExecutionETEOTrainer(Trainer):
@@ -55,9 +57,19 @@ class OrderExecutionETEOTrainer(Trainer):
             self.buffer_size = int(
                 get_attr(kwargs, "buffer_size", 512))  # ReplayBuffer size. Empty the ReplayBuffer for on-policy.
 
+        self.epochs = int(get_attr(kwargs, "epochs", 20))
+
         self.state_dim = self.agent.state_dim
         self.action_dim = self.agent.action_dim
-        self.epochs = int(get_attr(kwargs, "epochs", 20))
+        self.transition = self.agent.transition
+
+        self.transition_shapes = OrderedDict({
+            'state': (self.buffer_size, self.num_envs, self.time_steps, self.state_dim),
+            'action': (self.buffer_size, self.num_envs, 2),
+            'reward': (self.buffer_size, self.num_envs),
+            'undone': (self.buffer_size, self.num_envs),
+            'next_state': (self.buffer_size, self.num_envs, self.time_steps, self.state_dim),
+        })
 
         self.init_before_training()
 
@@ -105,12 +117,12 @@ class OrderExecutionETEOTrainer(Trainer):
 
         '''init buffer'''
         if self.if_off_policy:
-            buffer = ReplayBuffer(device=self.device,
-                                  num_envs=self.num_envs,
+            buffer = GeneralReplayBuffer(transition=self.transition,
+                                  shapes=self.transition_shapes,
+                                  num_seqs=self.num_envs,
                                   max_size=self.buffer_size,
-                                  state_dim=self.time_steps * self.state_dim,
-                                  action_dim=1 if self.if_discrete else self.action_dim)
-            buffer_items = self.agent.explore_env(env=self.train_environment, horizon_len=self.horizon_len, if_random=True)
+                                  device=self.device)
+            buffer_items = self.agent.explore_env(env=self.train_environment, horizon_len=self.horizon_len)
             buffer.update(buffer_items)  # warm up for ReplayBuffer
         else:
             buffer = []
@@ -130,7 +142,7 @@ class OrderExecutionETEOTrainer(Trainer):
             logging_tuple = self.agent.update_net(buffer)
             torch.set_grad_enabled(False)
 
-            if torch.mean(buffer_items[-1]) < 1.0:
+            if torch.mean(buffer_items.undone) < 1.0:
                 print("Valid Episode: [{}/{}]".format(epoch, self.epochs))
                 state = self.agent.init_states(env=self.valid_environment)
                 if self.num_envs == 1:

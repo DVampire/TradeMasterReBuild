@@ -6,7 +6,7 @@ sys.path.append(ROOT)
 
 from ..builder import AGENTS
 from ..custom import AgentBase
-from trademaster.utils import get_attr, ReplayBuffer
+from trademaster.utils import get_attr, ReplayBuffer, get_optim_param
 import numpy as np
 import torch
 from random import sample
@@ -14,12 +14,7 @@ from types import MethodType
 from copy import deepcopy
 from torch import Tensor
 from typing import Tuple
-
-def get_optim_param(optimizer: torch.optim) -> list:
-    params_list = []
-    for params_dict in optimizer.state_dict()["state"].values():
-        params_list.extend([t for t in params_dict.values() if isinstance(t, torch.Tensor)])
-    return params_list
+from collections import namedtuple
 
 
 @AGENTS.register_module()
@@ -56,6 +51,9 @@ class OrderExecutionETEO(AgentBase):
 
         self.act_target = self.cri_target = deepcopy(self.act)
 
+        self.transition = get_attr(kwargs, "transition",
+                                   namedtuple("Transition", ['state', 'action', 'reward', 'undone', 'next_state']))
+
         self.last_state = None
 
     def get_save(self):
@@ -90,6 +88,7 @@ class OrderExecutionETEO(AgentBase):
         actions = torch.zeros((horizon_len, self.num_envs, 2), dtype=torch.int32).to(self.device)  # different
         rewards = torch.zeros((horizon_len, self.num_envs), dtype=torch.float32).to(self.device)
         dones = torch.zeros((horizon_len, self.num_envs), dtype=torch.bool).to(self.device)
+        next_states = torch.zeros((horizon_len, self.num_envs, self.time_steps, self.state_dim), dtype=torch.float32).to(self.device)
 
         state = self.last_state  # last_state.shape = (1, time_steps, state_dim) for a single env.
         get_action = self.get_action
@@ -109,14 +108,23 @@ class OrderExecutionETEO(AgentBase):
             actions[t] = action
             rewards[t] = reward
             dones[t] = bool(done)
+            next_states[t] = state
 
         self.last_state = state
 
         rewards *= self.reward_scale
         undones = 1.0 - dones.type(torch.float32)
 
-        states = states.view((horizon_len, self.num_envs, self.time_steps * self.state_dim))
-        return states, actions, rewards, undones
+        states = states.view((horizon_len, self.num_envs, self.time_steps, self.state_dim))
+
+        transition = self.transition(
+            state=states,
+            action=actions,
+            reward=rewards,
+            undone=undones,
+            next_state=next_states
+        )
+        return transition
 
     def get_action(self, state, if_train = True):
 
@@ -146,7 +154,14 @@ class OrderExecutionETEO(AgentBase):
         assert update_times >= 1
 
         for _ in range(update_times):
-            state, action, reward, undone, next_state = buffer.sample(self.batch_size)
+
+            transition = buffer.sample(self.batch_size)
+            state = transition.state
+            action = transition.action
+            reward = transition.reward
+            undone = transition.undone
+            next_state = transition.next_state
+
             action_volume, action_price, v = self.cri_target(next_state)
             td_target = reward + self.gamma * v * undone
 

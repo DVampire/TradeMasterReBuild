@@ -71,7 +71,14 @@ loss = dict(type='MSELoss')
 
 optimizer = dict(type='Adam', lr=0.001)
 
-net = dict(
+act = dict(
+    type="PDNet",
+    input_feature = None,
+    hidden_size = 32,
+    private_feature = None
+)
+
+cri = dict(
     type="PDNet",
     input_feature = None,
     hidden_size = 32,

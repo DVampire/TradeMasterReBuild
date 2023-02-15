@@ -14,6 +14,7 @@ _base_ = [
     f"../_base_/losses/{loss_name}.py",
     f"../_base_/optimizers/{optimizer_name}.py",
     f"../_base_/nets/{net_name}.py",
+    f"../_base_/transition/transition.py"
 ]
 
 data = dict(
@@ -188,6 +189,10 @@ test_style=0
 
 environment = dict(
     type="OrderExecutionETEOEnvironment",
+)
+
+transition = dict(
+    type = "Transition"
 )
 
 agent = dict(
