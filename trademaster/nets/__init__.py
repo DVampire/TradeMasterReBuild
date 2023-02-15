@@ -11,3 +11,4 @@ from .sarl import mLSTMClf
 from .eteo import ETEOStacked
 from .eteo import ETEOLSTM
 from .pd import PDNet
+from .high_frequency_trading_dqn import HFTQNet

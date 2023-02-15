@@ -9,4 +9,4 @@ from .misc import save_best_model
 from .misc import load_best_model
 from .misc import save_object
 from .misc import load_object
-from .replay_buffer import ReplayBuffer
+from .replay_buffer import ReplayBuffer,ReplayBufferHFT

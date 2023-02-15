@@ -4,17 +4,22 @@ import torch.nn as nn
 from .builder import NETS
 from .custom import Net
 from torch import Tensor
+import torch.nn.functional as F
 
-def build_mlp(dims: [int]) -> nn.Sequential:  # MLP (MultiLayer Perceptron)
+def build_mlp(dims: list) -> nn.Sequential:  # MLP (MultiLayer Perceptron)
     net_list = []
     for i in range(len(dims) - 1):
         net_list.extend([nn.Linear(dims[i], dims[i + 1]), nn.ReLU()])
     del net_list[-1]  # remove the activation of output layer
     return nn.Sequential(*net_list)
 
+
+
+
+
 @NETS.register_module()
 class QNet(Net):
-    def __init__(self, dims: [int], state_dim: int, action_dim: int, explore_rate = 0.25):
+    def __init__(self, dims: list, state_dim: int, action_dim: int, explore_rate = 0.25):
         super().__init__()
         self.net = build_mlp(dims=[state_dim, *dims, action_dim])
         self.explore_rate = explore_rate
@@ -38,3 +43,5 @@ class QNet(Net):
         if isinstance(m, nn.Linear):
             torch.nn.init.kaiming_uniform(m.weight)
             m.bias.data.zero_()
+            
+            
