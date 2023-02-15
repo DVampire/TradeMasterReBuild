@@ -188,15 +188,13 @@ class OrderExecutionPDTrainer(Trainer):
 
                     state, info = self.valid_environment.reset()
 
-                    public_state = torch.from_numpy(state).to(self.device).float()
-                    private_state = torch.from_numpy(info["private_state"]).to(self.device).float()
-
                     episode_reward_sum = 0.0  # sum of rewards in an episode
                     while True:
-                        tensor_state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
+                        public_state = torch.from_numpy(state).to(self.device).float()
+                        private_state = torch.from_numpy(info["private_state"]).to(self.device).float()
                         tensor_action = self.agent.get_student_action(public_state, private_state)
                         action = tensor_action[0, 0].detach().cpu().numpy()
-                        state, reward, done, _ = self.valid_environment.step(action)
+                        state, reward, done, info = self.valid_environment.step(action)
                         episode_reward_sum += reward
                         if done:
                             print("Valid Episode Reward Sum: {:04f}".format(episode_reward_sum))
@@ -216,26 +214,23 @@ class OrderExecutionPDTrainer(Trainer):
 
 
     def test(self):
-        self.agent.student_ppo.old_net = torch.load(os.path.join(self.best_model_path,"best_net.pth"))
+        load_best_model(self.checkpoints_path, save=self.agent.get_save(), is_train=False)
 
-        s, info = self.test_environment.reset()
-        action_list = []
-        reward_list = []
+        print("Test Best Episode")
 
-        done = False
-        while not done:
-            public_state = torch.from_numpy(s).to(self.device).float()
-            private_state = torch.from_numpy(info["private_state"]).to(
-                self.device).float()
-            action = self.agent.student_ppo.choose_action_test(
-                public_state, private_state)
-            s_, r, done, info_ = self.test_environment.step(action)
-            info = info_
-            s = s_
-            action_list.append(action)
-            reward_list.append(r)
-        action_list = np.array(action_list)
-        reward_list = np.array(reward_list)
-        np.save(os.path.join(self.work_dir,"action.npy"), action_list)
-        np.save(os.path.join(self.work_dir,"reward.npy"), reward_list)
-        return reward_list[-1]
+        state, info = self.test_environment.reset()
+
+        episode_reward_sum = 0
+        while True:
+
+            public_state = torch.from_numpy(state).to(self.device).float()
+            private_state = torch.from_numpy(info["private_state"]).to(self.device).float()
+
+            tensor_action = self.agent.get_student_action(public_state, private_state)
+            action = tensor_action[0, 0].detach().cpu().numpy()
+            state, reward, done, info = self.test_environment.step(action)
+            episode_reward_sum += reward
+
+            if done:
+                print("Test Best Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                break
