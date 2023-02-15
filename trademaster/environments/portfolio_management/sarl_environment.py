@@ -93,7 +93,7 @@ class PortfolioManagementSARLEnvironment(Environments):
 
     def reset(self):
         self.asset_memory = [self.initial_amount]
-        self.day = self.day
+        self.day = self.length_day
         self.data = self.df.loc[self.day, :]
 
         tic_list = list(self.data.tic)
