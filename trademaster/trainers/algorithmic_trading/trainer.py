@@ -6,10 +6,11 @@ import torch
 ROOT = Path(__file__).resolve().parents[3]
 from ..custom import Trainer
 from ..builder import TRAINERS
-from trademaster.utils import get_attr, save_model, load_best_model, save_best_model, ReplayBuffer
+from trademaster.utils import get_attr, save_model, load_best_model, save_best_model, ReplayBuffer, GeneralReplayBuffer
 import numpy as np
 import os
 import pandas as pd
+from collections import namedtuple, OrderedDict
 
 
 @TRAINERS.register_module()
@@ -36,44 +37,33 @@ class AlgorithmicTradingTrainer(Trainer):
         self.num_threads = int(get_attr(kwargs, "num_threads", 8))
 
         self.if_remove = get_attr(kwargs, "if_remove", False)
-        self.if_discrete = get_attr(
-            kwargs, "if_discrete",
-            False)  # discrete or continuous action space
+        self.if_discrete = get_attr(kwargs, "if_discrete", False)
         self.if_off_policy = get_attr(kwargs, "if_off_policy", True)
-        self.if_keep_save = get_attr(
-            kwargs, "if_keep_save", True
-        )  # keeping save the checkpoint. False means save until stop training.
-        self.if_over_write = get_attr(
-            kwargs, "if_over_write",
-            False)  # overwrite the best policy network. `self.cwd/actor.pth`
-        self.if_save_buffer = get_attr(
-            kwargs, "if_save_buffer", False
-        )  # if save the replay buffer for continuous training after stop training
+        self.if_keep_save = get_attr(kwargs, "if_keep_save", True)
+        self.if_over_write = get_attr(kwargs, "if_over_write", False)
+        self.if_save_buffer = get_attr(kwargs, "if_save_buffer", False)
 
         if self.if_off_policy:  # off-policy
-            self.batch_size = int(
-                get_attr(kwargs, "batch_size",
-                         64))  # num of transitions sampled from replay buffer.
-            self.horizon_len = int(
-                get_attr(kwargs, "horizon_len", 512)
-            )  # collect horizon_len step while exploring, then update networks
-            self.buffer_size = int(get_attr(
-                kwargs, "buffer_size",
-                1e6))  # ReplayBuffer size. First in first out for off-policy.
+            self.batch_size = int(get_attr(kwargs, "batch_size", 64))
+            self.horizon_len = int(get_attr(kwargs, "horizon_len", 512))
+            self.buffer_size = int(get_attr(kwargs, "buffer_size", 1e6))
         else:  # on-policy
-            self.batch_size = int(get_attr(
-                kwargs, "batch_size",
-                128))  # num of transitions sampled from replay buffer.
-            self.horizon_len = int(
-                get_attr(kwargs, "horizon_len", 2048)
-            )  # collect horizon_len step while exploring, then update network
-            self.buffer_size = int(
-                get_attr(kwargs, "buffer_size", None)
-            )  # ReplayBuffer size. Empty the ReplayBuffer for on-policy.
+            self.batch_size = int(get_attr(kwargs, "batch_size", 128))
+            self.horizon_len = int(get_attr(kwargs, "horizon_len", 512))
+            self.buffer_size = int(get_attr(kwargs, "buffer_size", 128))
+        self.epochs = int(get_attr(kwargs, "epochs", 20))
 
         self.state_dim = self.agent.state_dim
         self.action_dim = self.agent.action_dim
-        self.epochs = int(get_attr(kwargs, "epochs", 20))
+        self.transition = self.agent.transition
+
+        self.transition_shapes = OrderedDict({
+            'state':(self.buffer_size, self.num_envs, self.state_dim),
+            'action': (self.buffer_size, self.num_envs, 1),
+            'reward': (self.buffer_size, self.num_envs),
+            'undone': (self.buffer_size, self.num_envs),
+            'next_state':(self.buffer_size, self.num_envs, self.state_dim),
+        })
 
         self.init_before_training()
 
@@ -122,16 +112,15 @@ class AlgorithmicTradingTrainer(Trainer):
         self.agent.last_state = state.detach()
         '''init buffer'''
         if self.if_off_policy:
-            buffer = ReplayBuffer(
-                device=self.device,
-                num_envs=self.num_envs,
-                max_size=self.buffer_size,
-                state_dim=self.state_dim,
-                action_dim=1 if self.if_discrete else self.action_dim)
-            buffer_items = self.agent.explore_env(self.train_environment,
-                                                  self.horizon_len,
-                                                  if_random=True)
-            buffer.update(buffer_items)  # warm up for ReplayBuffer
+            buffer = GeneralReplayBuffer(
+                                  transition=self.transition,
+                                  shapes=self.transition_shapes,
+                                  num_seqs=self.num_envs,
+                                  max_size=self.buffer_size,
+                                  device=self.device,
+                                  )
+            buffer_items = self.agent.explore_env(self.train_environment, self.horizon_len, if_random=True)
+            buffer.update(buffer_items)
         else:
             buffer = []
 
@@ -139,9 +128,7 @@ class AlgorithmicTradingTrainer(Trainer):
         epoch = 1
         print("Train Episode: [{}/{}]".format(epoch, self.epochs))
         while True:
-            buffer_items = self.agent.explore_env(self.train_environment,
-                                                  self.horizon_len)
-            exp_r = buffer_items[2].mean().item()
+            buffer_items = self.agent.explore_env(self.train_environment, self.horizon_len)
             if self.if_off_policy:
                 buffer.update(buffer_items)
             else:
@@ -151,16 +138,13 @@ class AlgorithmicTradingTrainer(Trainer):
             logging_tuple = self.agent.update_net(buffer)
             torch.set_grad_enabled(False)
 
-            if torch.mean(buffer_items[-1]) < 1.0:
-                #如果环境中出现undone的情况
+            if torch.mean(buffer_items.undone) < 1.0:
                 print("Valid Episode: [{}/{}]".format(epoch, self.epochs))
                 state = self.valid_environment.reset()
                 episode_reward_sum = 0.0  # sum of rewards in an episode
                 while True:
-                    tensor_state = torch.as_tensor(
-                        state, dtype=torch.float32,
-                        device=self.device).unsqueeze(0)
-                    tensor_action = self.agent.act(tensor_state)
+                    tensor_state = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+                    tensor_action = self.agent.get_action(tensor_state)
                     if self.if_discrete:
                         tensor_action = tensor_action.argmax(dim=1)
                     action = tensor_action.detach().cpu().numpy(
@@ -172,7 +156,7 @@ class AlgorithmicTradingTrainer(Trainer):
                         print("Valid Episode Reward Sum: {:04f}".format(
                             episode_reward_sum))
                         break
-                    valid_score_list.append(episode_reward_sum)
+                valid_score_list.append(episode_reward_sum)
 
                 save_model(self.checkpoints_path,
                            epoch=epoch,

@@ -1,20 +1,19 @@
 
-act_net = dict(
+act = dict(
     type = "EIIEConv",
-    n_input = None,
-    n_output=1,
-    length=None,
+    input_dim = None,
+    output_dim=1,
+    time_steps=None,
     kernel_size=3,
-    num_layer=1,
-    n_hidden=32
+    dims = [32]
 )
 
-cri_net = dict(
+cri = dict(
     type = "EIIECritic",
-    n_input = None,
-    n_output=1,
-    length=None,
-    kernel_size=3,
-    num_layer=1,
-    n_hidden=32
+    input_dim = None,
+    action_dim = None,
+    output_dim=1,
+    time_steps=None,
+    num_layers = 1,
+    hidden_size=32
 )

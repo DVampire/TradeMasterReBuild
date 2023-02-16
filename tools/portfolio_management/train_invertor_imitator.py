@@ -48,20 +48,20 @@ def test_investor_imitator():
     train_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="train"))
     valid_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="valid"))
     test_environment = build_environment(cfg, default_args=dict(dataset=dataset, task="test"))
+
     if task_name.startswith("style_test"):
         test_style_environments = []
         for i, path in enumerate(dataset.test_style_paths):
             test_style_environments.append(build_environment(cfg, default_args=dict(dataset=dataset, task="test_style",
                                                                                     style_test_path=path,
                                                                                     task_index=i)))
-    n_action = train_environment.action_space.n
-    n_state = train_environment.observation_space.shape[0]
-    n_input = train_environment.observation_space.shape[1]
-    n_output = train_environment.action_space.n
+    action_dim = train_environment.action_dim
+    state_dim = train_environment.state_dim
+    input_dim = train_environment.observation_space.shape[1]
 
-    cfg.act_net.update(dict(n_input=n_input, n_output=n_output))
+    cfg.act.update(dict(input_dim=input_dim, output_dim=action_dim))
 
-    act_net = build_net(cfg.act_net)
+    act = build_net(cfg.act)
 
     work_dir = os.path.join(ROOT, cfg.trainer.work_dir)
 
@@ -69,15 +69,15 @@ def test_investor_imitator():
         os.makedirs(work_dir)
     cfg.dump(osp.join(work_dir, osp.basename(args.config)))
 
-    act_optimizer = build_optimizer(cfg, default_args=dict(params=act_net.parameters()))
+    act_optimizer = build_optimizer(cfg, default_args=dict(params=act.parameters()))
 
-    loss = build_loss(cfg)
+    criterion = build_loss(cfg)
 
-    agent = build_agent(cfg, default_args=dict(n_action=n_action,
-                                               n_state=n_state,
-                                               act_net=act_net,
+    agent = build_agent(cfg, default_args=dict(action_dim=action_dim,
+                                               state_dim=state_dim,
+                                               act=act,
                                                act_optimizer=act_optimizer,
-                                               loss=loss,
+                                               criterion=criterion,
                                                device = device))
 
     if task_name.startswith("style_test"):

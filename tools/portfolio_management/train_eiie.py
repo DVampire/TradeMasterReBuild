@@ -19,6 +19,7 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
+from trademaster.transition.builder import build_transition
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
@@ -56,16 +57,16 @@ def test_deeptrader():
                                                                                     style_test_path=path,
                                                                                     task_index=i)))
 
-    n_action = train_environment.action_space.shape[0]
-    n_state = train_environment.observation_space.shape[0]
-    n_input = len(train_environment.tech_indicator_list)
-    length = train_environment.length_day
+    action_dim = train_environment.action_dim # 29
+    state_dim = train_environment.state_dim # 11
+    input_dim = len(train_environment.tech_indicator_list)
+    time_steps = train_environment.time_steps
 
-    cfg.act_net.update(dict(n_input=n_input, length=length))
-    cfg.cri_net.update(dict(n_input=n_input, length=length))
+    cfg.act.update(dict(input_dim=input_dim, time_steps=time_steps))
+    cfg.cri.update(dict(input_dim=input_dim, action_dim= action_dim, time_steps=time_steps))
 
-    act_net = build_net(cfg.act_net)
-    cri_net = build_net(cfg.cri_net)
+    act = build_net(cfg.act)
+    cri = build_net(cfg.cri)
 
     work_dir = os.path.join(ROOT, cfg.trainer.work_dir)
 
@@ -73,17 +74,20 @@ def test_deeptrader():
         os.makedirs(work_dir)
     cfg.dump(osp.join(work_dir, osp.basename(args.config)))
 
-    act_optimizer = build_optimizer(cfg, default_args=dict(params=act_net.parameters()))
-    cri_optimizer = build_optimizer(cfg, default_args=dict(params=cri_net.parameters()))
-    loss = build_loss(cfg)
+    act_optimizer = build_optimizer(cfg, default_args=dict(params=act.parameters()))
+    cri_optimizer = build_optimizer(cfg, default_args=dict(params=cri.parameters()))
+    criterion = build_loss(cfg)
+    transition = build_transition(cfg)
 
-    agent = build_agent(cfg, default_args=dict(n_action=n_action,
-                                               n_state=n_state,
-                                               act_net=act_net,
-                                               cri_net=cri_net,
+    agent = build_agent(cfg, default_args=dict(action_dim=action_dim,
+                                               state_dim=state_dim,
+                                               time_steps = time_steps,
+                                               act=act,
+                                               cri=cri,
                                                act_optimizer=act_optimizer,
                                                cri_optimizer = cri_optimizer,
-                                               loss=loss,
+                                               criterion=criterion,
+                                               transition = transition,
                                                device = device))
 
     if task_name.startswith("style_test"):

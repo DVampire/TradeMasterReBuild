@@ -2,141 +2,75 @@ import torch
 import torch.nn as nn
 from .builder import NETS
 from .custom import Net
+from trademaster.utils import build_conv2d
+from torch import Tensor
 
 @NETS.register_module()
 class EIIEConv(Net):
     def __init__(self,
-                 n_input,
-                 n_output = 1,
-                 length = None,
+                 input_dim,
+                 output_dim = 1,
+                 time_steps = 10,
                  kernel_size = 3,
-                 num_layer=None,
-                 n_hidden=None):
+                 dims = (32, )):
         super(EIIEConv, self).__init__()
-        self.n_input = n_input
-        self.n_output = n_output
-        self.length = length
+
         self.kernel_size = kernel_size
-        self.act = torch.nn.ReLU(inplace=False)
-        self.con1d = nn.Conv1d(self.n_input,
-                               self.n_output,
-                               kernel_size=3)
-        self.con2d = nn.Conv1d(self.n_output,
-                               1,
-                               kernel_size=self.length - self.kernel_size + 1)
-        self.con3d = nn.Conv1d(1, 1, kernel_size=1)
+        self.time_steps = time_steps
+
+        self.net = build_conv2d(
+            dims=[input_dim, *dims, output_dim],
+            kernel_size=[(1, self.kernel_size), (1, self.time_steps - self.kernel_size + 1)]
+        )
         self.para = torch.nn.Parameter(torch.ones(1).requires_grad_())
 
-    def forward(self, x):
-        x = x.permute(0, 2, 1)
-        x = self.con1d(x)
-        x = self.act(x)
-        x = self.con2d(x)
-        x = self.act(x)
-        x = self.con3d(x)
-        x = x.view(-1)
+    def forward(self, x): # (batch_size, num_seqs, action_dim, time_steps, state_dim)
+        if len(x.shape) > 4:
+            x = x.squeeze(1)
+        x = x.permute(0, 3, 1, 2)
+        x = self.net(x)
+        x = x.view(x.shape[0], -1)
 
-        # self.linear2 = nn.Linear(len(x), len(x) + 1)
-        # x = self.linear2(x)
-        x = torch.cat((x, self.para), dim=0)
-        x = torch.softmax(x, dim=0)
-
-        return x
-
-@NETS.register_module()
-class EIIELSTM(Net):
-    def __init__(self,
-                 n_input,
-                 n_output = 1,
-                 length = None,
-                 kernel_size = 3,
-                 num_layer=None,
-                 n_hidden=None):
-        super(EIIELSTM, self).__init__()
-        self.n_input = n_input
-        self.n_output = n_output
-        self.n_hidden = n_hidden
-        self.num_layer = num_layer
-        self.lstm = nn.LSTM(input_size=n_input,
-                            hidden_size=self.n_hidden,
-                            num_layers=self.num_layer,
-                            batch_first=True)
-        self.linear = nn.Linear(self.n_hidden, self.n_output)
-        self.con3d = nn.Conv1d(1, 1, kernel_size=1)
-        self.para = torch.nn.Parameter(torch.ones(1).requires_grad_())
-
-    def forward(self, x):
-        lstm_out, _ = self.lstm(x)
-        x = self.linear(lstm_out[:, -1, :]).view(-1, 1, 1)
-        x = self.con3d(x)
-        x = x.view(-1)
-        x = torch.cat((x, self.para), dim=0)
-        x = torch.softmax(x, dim=0)
-        return x
-
-@NETS.register_module()
-class EIIERNN(Net):
-    def __init__(self,
-                 n_input,
-                 n_output=1,
-                 length=None,
-                 kernel_size=3,
-                 num_layer=None,
-                 n_hidden=None
-                 ):
-        super(EIIERNN, self).__init__()
-        self.n_input = n_input
-        self.n_output = n_output
-        self.n_hidden = n_hidden
-        self.num_layer = num_layer
-        self.rnn = nn.RNN(input_size=self.n_input,
-                          hidden_size=self.n_hidden,
-                          num_layers=self.num_layer,
-                          batch_first=True)
-        self.linear = nn.Linear(self.n_hidden, self.n_output)
-        self.con3d = nn.Conv1d(1, 1, kernel_size=1)
-        self.para = torch.nn.Parameter(torch.ones(1).requires_grad_())
-
-    def forward(self, x):
-        lstm_out, _ = self.rnn(x)
-        x = self.linear(lstm_out[:, -1, :]).view(-1, 1, 1)
-        x = self.con3d(x)
-        x = x.view(-1)
-        x = torch.cat((x, self.para), dim=0)
-        x = torch.softmax(x, dim=0)
+        para = self.para.repeat(x.shape[0], 1)
+        x = torch.cat((x, para), dim=1)
+        x = torch.softmax(x, dim=1)
         return x
 
 @NETS.register_module()
 class EIIECritic(Net):
     def __init__(self,
-                 n_input,
-                 n_output=1,
-                 length=None,
-                 kernel_size=3,
-                 num_layer=None,
-                 n_hidden=None
+                 input_dim,
+                 action_dim,
+                 output_dim=1,
+                 time_steps=10,
+                 num_layers= 1,
+                 hidden_size = 32,
                  ):
         super(EIIECritic, self).__init__()
-        self.n_input = n_input
-        self.n_output = n_output
-        self.n_hidden = n_hidden
-        self.num_layer = num_layer
-        self.lstm = nn.LSTM(input_size=self.n_input,
-                            hidden_size=self.n_hidden,
-                            num_layers=self.num_layer,
+
+        self.time_steps = time_steps
+
+        self.lstm = nn.LSTM(input_size=input_dim * time_steps,
+                            hidden_size=hidden_size,
+                            num_layers=num_layers,
                             batch_first=True)
-        self.linear = nn.Linear(self.n_hidden, self.n_output)
-        self.con3d = nn.Conv1d(1, 1, kernel_size=1)
+        self.linear1 = nn.Linear(hidden_size, output_dim)
+        self.act = nn.ReLU()
+        self.linear2 = nn.Linear(2 * (action_dim + 1), 1)
         self.para = torch.nn.Parameter(torch.ones(1).requires_grad_())
 
     def forward(self, x, a):
+        if len(x.shape) >= 4:
+            x = x.view(x.shape[0], x.shape[1], -1)
         lstm_out, _ = self.lstm(x)
-        x = self.linear(lstm_out[:, -1, :]).view(-1, 1, 1)
-        x = self.con3d(x)
-        x = x.view(-1)
-        x = torch.cat((x, self.para, a), dim=0)
-        x = torch.nn.ReLU(inplace=False)(x)
-        number_nodes = len(x)
-        self.linear2 = nn.Linear(number_nodes, 1).to(x.device)
-        x = self.linear2(x)
+        x = self.linear1(lstm_out)
+
+        x = self.act(x)
+
+        x = x.view(x.shape[0], -1)
+        para = self.para.repeat(x.shape[0], 1)
+
+        x = torch.cat((x, para, a), dim=1)
+        # x = self.linear2(x)
+        x = x.mean(dim = 1, keepdim=True)
         return x

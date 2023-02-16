@@ -14,6 +14,7 @@ _base_ = [
     f"../_base_/losses/{loss_name}.py",
     f"../_base_/optimizers/{optimizer_name}.py",
     f"../_base_/nets/{net_name}.py",
+    f"../_base_/transition/transition.py"
 ]
 
 data = dict(
@@ -190,6 +191,10 @@ environment = dict(
     type="OrderExecutionETEOEnvironment",
 )
 
+transition = dict(
+    type = "Transition"
+)
+
 agent = dict(
     type="OrderExecutionETEO",
     memory_capacity=1000,
@@ -203,24 +208,27 @@ trainer = dict(
     epochs=10,
     work_dir=work_dir,
     if_remove=True,
+    if_off_policy=True,
 )
 
 loss = dict(type='MSELoss')
 
 optimizer = dict(type='Adam', lr=0.001)
 
-act_net = dict(
+act = dict(
     type="ETEOStacked",
-    length=None,
-    features=None,
+    dims=[128,128],
+    time_steps=10,
     action_dim=2,
-    nodes=128
+    state_dim =10,
+    explore_rate=0.25
 )
 
-cri_net = dict(
+cri = dict(
     type="ETEOStacked",
-    length=None,
-    features=None,
+    dims=[128,128],
+    time_steps=10,
     action_dim=2,
-    nodes=128
+    state_dim =10,
+    explore_rate=0.25
 )

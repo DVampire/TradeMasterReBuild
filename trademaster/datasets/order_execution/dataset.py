@@ -54,7 +54,6 @@ class OrderExecutionDataset(CustomDataset):
         self.max_volume = get_attr(kwargs, "max_volume", 1)
         self.transaction_cost_pct = get_attr(kwargs, "transaction_cost_pct", 0.001)
         self.length_keeping = get_attr(kwargs, "length_keeping", 30)
-        self.state_length = get_attr(kwargs, "state_length", 10)
         self.target_order = get_attr(kwargs, "target_order", 1)
 
     def get_styled_intervals_and_gives_new_index(self, data):

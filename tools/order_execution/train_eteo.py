@@ -20,6 +20,7 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
+from trademaster.transition.builder import build_transition
 from collections import Counter
 
 
@@ -59,33 +60,34 @@ def test_eteo():
                                                                                     style_test_path=path,
                                                                                     task_index=i)))
 
-    n_action = train_environment.action_space.shape[0]
-    n_state = train_environment.observation_space.shape[0]
-    length = train_environment.state_length
-    features = train_environment.observation_space.shape[0]
+    action_dim = train_environment.action_dim
+    state_dim = train_environment.state_dim
 
-    cfg.act_net.update(dict(length=length, features=features))
-    cfg.cri_net.update(dict(length=length, features=features))
+    cfg.act.update(dict(action_dim=action_dim, state_dim=state_dim))
+    cfg.cri.update(dict(action_dim=action_dim, state_dim=state_dim))
 
-    act_net = build_net(cfg.act_net)
-    cri_net = build_net(cfg.cri_net)
+    act = build_net(cfg.act)
+    cri = build_net(cfg.cri)
 
     work_dir = os.path.join(ROOT, cfg.trainer.work_dir)
     if not os.path.exists(work_dir):
         os.makedirs(work_dir)
     cfg.dump(osp.join(work_dir, osp.basename(args.config)))
 
-    act_optimizer = build_optimizer(cfg, default_args=dict(params=act_net.parameters()))
+    act_optimizer = build_optimizer(cfg, default_args=dict(params=act.parameters()))
     cri_optimizer = None
-    loss = build_loss(cfg)
 
-    agent = build_agent(cfg, default_args=dict(n_action=n_action,
-                                               n_state=n_state,
-                                               act_net=act_net,
-                                               cri_net=cri_net,
+    criterion = build_loss(cfg)
+    transition = build_transition(cfg)
+
+    agent = build_agent(cfg, default_args=dict(action_dim=action_dim,
+                                               state_dim=state_dim,
+                                               act=act,
+                                               cri=cri,
                                                act_optimizer=act_optimizer,
                                                cri_optimizer=cri_optimizer,
-                                               loss=loss,
+                                               criterion=criterion,
+                                               transition=transition,
                                                device=device))
     if task_name.startswith("style_test"):
         trainers = []
@@ -104,6 +106,7 @@ def test_eteo():
                                                        ))
     if task_name.startswith("train"):
         trainer.train_and_valid()
+        trainer.test()
         print("train end")
     elif task_name.startswith("test"):
         trainer.test()

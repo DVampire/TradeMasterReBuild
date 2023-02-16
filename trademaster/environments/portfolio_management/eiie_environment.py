@@ -20,8 +20,8 @@ class PortfolioManagementEIIEEnvironment(Environments):
 
         self.dataset = get_attr(kwargs, "dataset", None)
         self.task = get_attr(kwargs, "task", "train")
-        length_day = get_attr(self.dataset, "length_day", 10)
-        self.day = length_day - 1
+        time_steps = get_attr(self.dataset, "time_steps", 10)
+        self.day = time_steps - 1
 
         self.df_path = None
         if self.task.startswith("train"):
@@ -43,7 +43,7 @@ class PortfolioManagementEIIEEnvironment(Environments):
         self.stock_dim = len(self.df.tic.unique())
         self.state_space_shape = self.stock_dim
         self.action_space_shape = self.stock_dim
-        self.length_day = length_day
+        self.time_steps = time_steps
 
         self.action_space = spaces.Box(low=-5,
                                        high=5,
@@ -53,9 +53,12 @@ class PortfolioManagementEIIEEnvironment(Environments):
             high=np.inf,
             shape=(len(self.tech_indicator_list),
                    self.state_space_shape,
-                   self.length_day))
+                   self.time_steps))
 
-        self.data = self.df.loc[self.day - self.length_day + 1:self.day, :]
+        self.action_dim = self.action_space.shape[0]
+        self.state_dim = self.observation_space.shape[0]
+
+        self.data = self.df.loc[self.day - self.time_steps + 1:self.day, :]
         self.state = np.array([[
             self.data[self.data.tic == tic][tech].values.tolist()
             for tech in self.tech_indicator_list
@@ -71,8 +74,8 @@ class PortfolioManagementEIIEEnvironment(Environments):
         self.transaction_cost_memory = []
 
     def reset(self):
-        self.day = self.length_day - 1
-        self.data = self.df.loc[self.day - self.length_day + 1:self.day, :]
+        self.day = self.time_steps - 1
+        self.data = self.df.loc[self.day - self.time_steps + 1:self.day, :]
         # initially, the self.state's shape is stock_dim*len(tech_indicator_list)
         self.state = np.array([[
             self.data[self.data.tic == tic][tech].values.tolist()
@@ -116,7 +119,7 @@ class PortfolioManagementEIIEEnvironment(Environments):
             self.weights_memory.append(weights)
             last_day_memory = self.df.loc[self.day, :]
             self.day += 1
-            self.data = self.df.loc[self.day - self.length_day + 1:self.day, :]
+            self.data = self.df.loc[self.day - self.time_steps + 1:self.day, :]
             self.state = np.array([[
                 self.data[self.data.tic == tic][tech].values.tolist()
                 for tech in self.tech_indicator_list

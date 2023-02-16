@@ -14,6 +14,7 @@ _base_ = [
     f"../_base_/losses/{loss_name}.py",
     f"../_base_/optimizers/{optimizer_name}.py",
     f"../_base_/nets/{net_name}.py",
+    f"../_base_/transition/transition.py"
 ]
 
 data = dict(
@@ -32,7 +33,9 @@ data = dict(
     transaction_cost_pct=0.001)
 
 environment = dict(type='PortfolioManagementEIIEEnvironment')
-
+transition = dict(
+    type = "Transition"
+)
 agent = dict(
     type='PortfolioManagementEIIE',
     memory_capacity=1000,
@@ -49,22 +52,21 @@ loss = dict(type='MSELoss')
 
 optimizer = dict(type='Adam', lr=0.001)
 
-act_net = dict(
-    type="EIIEConv",
-    n_input=None,
-    n_output=2,
-    length=None,
+act = dict(
+    type = "EIIEConv",
+    input_dim = None,
+    output_dim=1,
+    time_steps=10,
     kernel_size=3,
-    num_layer=1,
-    n_hidden=32
+    dims = [32]
 )
 
-cri_net = dict(
-    type="EIIECritic",
-    n_input=None,
-    n_output=1,
-    length=None,
-    kernel_size=3,
-    num_layer=1,
-    n_hidden=32
+cri = dict(
+    type = "EIIECritic",
+    input_dim = None,
+    action_dim = None,
+    output_dim=1,
+    time_steps=None,
+    num_layers = 1,
+    hidden_size=32
 )

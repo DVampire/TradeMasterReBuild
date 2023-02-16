@@ -3,12 +3,9 @@ from .deeptrader import AssetScoringNet
 from .deeptrader import AssetScoringValueNet
 from .deeptrader import MarketScoringNet
 from .eiie import EIIEConv
-from .eiie import EIIELSTM
-from .eiie import EIIERNN
 from .eiie import EIIECritic
 from .sarl import LSTMClf
 from .sarl import mLSTMClf
 from .eteo import ETEOStacked
-from .eteo import ETEOLSTM
 from .pd import PDNet
 from .high_frequency_trading_dqn import HFTQNet

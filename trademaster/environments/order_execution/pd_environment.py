@@ -7,11 +7,12 @@ from pathlib import Path
 ROOT = str(Path(__file__).resolve().parents[2])
 sys.path.append(ROOT)
 import numpy as np
-from trademaster.utils import get_attr
+from trademaster.utils import get_attr, print_metrics
 import pandas as pd
 from ..custom import Environments
 from ..builder import ENVIRONMENTS
 from gym import spaces
+from collections import OrderedDict
 
 @ENVIRONMENTS.register_module()
 class OrderExecutionPDEnvironment(Environments):
@@ -56,6 +57,11 @@ class OrderExecutionPDEnvironment(Environments):
             high=np.inf,
             shape=(self.state_length, len(self.tech_indicator_list)),
         )
+
+        self.action_dim = self.action_space.shape[0]
+        self.state_dim = self.observation_space.shape[-1]
+        self.public_state_dim = self.state_dim
+        self.private_state_dim = 2
 
         self.day = self.state_length
         self.data_public_imperfect = self.df.iloc[
@@ -108,7 +114,6 @@ class OrderExecutionPDEnvironment(Environments):
         self.terminal = (self.day >= (len(self.df) - self.state_length))
         if self.terminal:
             leftover_day, leftover_order = self.private_state
-            print("done")
             self.data_public_imperfect = self.df.iloc[
                                          self.day - self.state_length:self.day, :]
             current_price = self.data_public_imperfect.iloc[-1].close
@@ -116,6 +121,14 @@ class OrderExecutionPDEnvironment(Environments):
             self.public_imperfect_state = np.array(self.public_imperfect_state)
             self.private_state_list.append([0, 0])
             self.private_state_list.remove(self.private_state_list[0])
+
+            stats = OrderedDict(
+                {
+                    "Money Sold": ["{:04f}".format(self.money_sold)],
+                }
+            )
+            table = print_metrics(stats)
+            print(table)
 
             return self.public_imperfect_state, self.reward, self.terminal, {
                 "perfect_state": np.array([self.public_perfect_state]),
@@ -147,8 +160,9 @@ class OrderExecutionPDEnvironment(Environments):
                         current_price / previous_average_price - 1)
             else:
                 self.money_sold += leftover_order * current_price
+                self.reward = leftover_order * (
+                        current_price / previous_average_price - 1)
                 self.terminal = True
-                print("done")
             leftover_day, leftover_order = leftover_day - 1 / (len(
                 self.df) - 2 * self.state_length), leftover_order - action
             self.private_state = np.array([leftover_day, leftover_order])

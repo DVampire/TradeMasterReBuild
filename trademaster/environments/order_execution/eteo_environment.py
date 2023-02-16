@@ -31,7 +31,6 @@ class OrderExecutionETEOEnvironment(Environments):
             self.df_path = get_attr(self.dataset, "test_path", None)
 
         self.initial_amount = get_attr(self.dataset, "initial_amount", 100000)
-        self.state_length = get_attr(self.dataset, "state_length", 10)
         self.tech_indicator_list = get_attr(self.dataset, "tech_indicator_list", [])
         self.target_order = get_attr(self.dataset, "target_order", 1)
         self.portfolio = [self.initial_amount] + [0] + [0] + [0]
@@ -53,6 +52,9 @@ class OrderExecutionETEOEnvironment(Environments):
             low=-np.inf,
             high=np.inf,
             shape=(len(self.tech_indicator_list) + 2,))
+
+        self.action_dim = self.action_space.shape[0]
+        self.state_dim = self.observation_space.shape[0]
 
         self.data = self.df.loc[self.time_frame, :]
         self.data_normal = self.data.copy()
@@ -369,7 +371,9 @@ class OrderExecutionETEOEnvironment(Environments):
 
             stats = OrderedDict(
                 {
+                    "Cash Left": ["{:04f}".format(cash_left)],
                     "TWAP": ["{:04f}".format(TWAP_value)],
+                    "Cash Left Ratio": ["{:04f}%".format(100 * (cash_left - TWAP_value) / TWAP_value)],
                 }
             )
             table = print_metrics(stats)

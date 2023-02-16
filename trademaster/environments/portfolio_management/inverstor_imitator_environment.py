@@ -58,7 +58,7 @@ class PortfolioManagementInvestorImitatorEnvironment(Environments):
             discriptor_best_path = os.path.join(discriptor_path,best_model_path)
             for net_dict in os.listdir(discriptor_best_path):
                 indicator_dict = torch.load(os.path.join(discriptor_best_path, net_dict), map_location=torch.device('cpu'))
-                net = MLPReg(n_input=len(self.tech_indicator_list), n_hidden = 256, n_output=1).cpu()
+                net = MLPReg(input_dim=len(self.tech_indicator_list), dims = [256], output_dim=1).cpu()
                 net.load_state_dict(indicator_dict)
             all_dict.update({sub_file: net})
         # here the self.net_2_dict is the 2 layer of dict and content is the network
@@ -73,6 +73,9 @@ class PortfolioManagementInvestorImitatorEnvironment(Environments):
             shape=(1, self.state_space_shape *
                    (len(self.nets_2_dict) + len(self.tech_indicator_list)) +
                    self.state_space_shape))
+
+        self.action_dim = self.action_space.n
+        self.state_dim = self.observation_space.shape[0]
 
         self.data = self.df.loc[self.day, :]
         # initially, the self.state's shape is stock_dim*len(tech_indicator_list)
