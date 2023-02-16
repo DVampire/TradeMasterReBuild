@@ -15,6 +15,7 @@ from torch.nn.utils import clip_grad_norm_
 from types import MethodType
 from collections import namedtuple
 
+
 @AGENTS.register_module()
 class AlgorithmicTradingDQN(AgentBase):
     def __init__(self, **kwargs):
@@ -28,21 +29,32 @@ class AlgorithmicTradingDQN(AgentBase):
         self.action_dim = get_attr(kwargs, "action_dim", 2) # vector dimension (feature number) of action
 
         '''Arguments for reward shaping'''
-        self.gamma = get_attr(kwargs, "gamma", 0.99)  # discount factor of future rewards
-        self.reward_scale = get_attr(kwargs, "reward_scale", 2 ** 0)  # an approximate target reward usually be closed to 256
-        self.repeat_times = get_attr(kwargs, "repeat_times", 1.0)  # repeatedly update network using ReplayBuffer
+        self.gamma = get_attr(kwargs, "gamma",
+                              0.99)  # discount factor of future rewards
+        self.reward_scale = get_attr(
+            kwargs, "reward_scale",
+            2**0)  # an approximate target reward usually be closed to 256
+        self.repeat_times = get_attr(
+            kwargs, "repeat_times",
+            1.0)  # repeatedly update network using ReplayBuffer
         self.batch_size = int(get_attr(kwargs, "batch_size", 64))
 
-        self.clip_grad_norm = get_attr(kwargs, "clip_grad_norm", 3.0)  # clip the gradient after normalization
-        self.soft_update_tau = get_attr(kwargs, "soft_update_tau", 0)  # the tau of soft target update `net = (1-tau)*net + net1`
-        self.state_value_tau = get_attr(kwargs, "state_value_tau", 5e-3)  # the tau of normalize for value and state
+        self.clip_grad_norm = get_attr(
+            kwargs, "clip_grad_norm",
+            3.0)  # clip the gradient after normalization
+        self.soft_update_tau = get_attr(
+            kwargs, "soft_update_tau",
+            0)  # the tau of soft target update `net = (1-tau)*net + net1`
+        self.state_value_tau = get_attr(
+            kwargs, "state_value_tau",
+            5e-3)  # the tau of normalize for value and state
 
         self.last_state = None  # last state of the trajectory for training. last_state.shape == (num_envs, state_dim)
-
         '''network'''
-        self.act = self.act_target = get_attr(kwargs, "act", None).to(self.device)
-        self.cri = self.cri_target = get_attr(kwargs, "cri", None) if get_attr(kwargs, "cri", None) else self.act
-
+        self.act = self.act_target = get_attr(kwargs, "act",
+                                              None).to(self.device)
+        self.cri = self.cri_target = get_attr(kwargs, "cri", None) if get_attr(
+            kwargs, "cri", None) else self.act
         '''optimizer'''
         self.act_optimizer = get_attr(kwargs, "act_optimizer", None)
         self.cri_optimizer = get_attr(kwargs, "cri_optimizer", None) if get_attr(kwargs, "cri_optimizer", None) else self.act_optimizer
@@ -56,19 +68,16 @@ class AlgorithmicTradingDQN(AgentBase):
 
     def get_save(self):
         models = {
-            "act":self.act,
-            "cri":self.cri,
+            "act": self.act,
+            "cri": self.cri,
             "act_target": self.act_target,
             "cri_target": self.cri_target,
         }
         optimizers = {
-            "act_optimizer":self.act_optimizer,
-            "cri_optimizer":self.cri_optimizer
+            "act_optimizer": self.act_optimizer,
+            "cri_optimizer": self.cri_optimizer
         }
-        res = {
-            "models":models,
-            "optimizers":optimizers
-        }
+        res = {"models": models, "optimizers": optimizers}
         return res
 
     def explore_env(self, env, horizon_len: int, if_random: bool = False) -> Tuple[Tensor, ...]:
@@ -86,7 +95,9 @@ class AlgorithmicTradingDQN(AgentBase):
 
             ary_action = action[0, 0].detach().cpu().numpy()
             ary_state, reward, done, _ = env.step(ary_action)  # next_state
-            state = torch.as_tensor(env.reset() if done else ary_state, dtype=torch.float32, device=self.device)
+            state = torch.as_tensor(env.reset() if done else ary_state,
+                                    dtype=torch.float32,
+                                    device=self.device)
             actions[t] = action
             rewards[t] = reward
             dones[t] = done
@@ -139,7 +150,8 @@ class AlgorithmicTradingDQN(AgentBase):
         """
         optimizer.zero_grad()
         objective.backward()
-        clip_grad_norm_(parameters=optimizer.param_groups[0]["params"], max_norm=self.clip_grad_norm)
+        clip_grad_norm_(parameters=optimizer.param_groups[0]["params"],
+                        max_norm=self.clip_grad_norm)
         optimizer.step()
 
     def update_net(self, buffer: GeneralReplayBuffer) -> Tuple[float, ...]:
@@ -157,7 +169,8 @@ class AlgorithmicTradingDQN(AgentBase):
         return obj_critics / update_times, obj_actors / update_times
 
     @staticmethod
-    def soft_update(target_net: torch.nn.Module, current_net: torch.nn.Module, tau: float):
+    def soft_update(target_net: torch.nn.Module, current_net: torch.nn.Module,
+                    tau: float):
         """soft update target network via current network
 
         target_net: update target network via current network to make training more stable.

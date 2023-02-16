@@ -2,9 +2,11 @@ from mmcv.utils import Registry
 from trademaster.utils import build_from_cfg
 import copy
 
-DATASETS = Registry('dataset')
+DATASETS = Registry("dataset")
+
 
 def build_dataset(cfg, default_args=None):
     cp_cfg = copy.deepcopy(cfg.data)
+    print(cp_cfg)
     dataset = build_from_cfg(cp_cfg, DATASETS, default_args)
     return dataset

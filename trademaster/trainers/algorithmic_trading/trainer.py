@@ -20,7 +20,9 @@ class AlgorithmicTradingTrainer(Trainer):
 
         self.num_envs = int(get_attr(kwargs, "num_envs", 1))
 
-        self.device = get_attr(kwargs, "device", torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu"))
+        self.device = get_attr(
+            kwargs, "device",
+            torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu"))
 
         self.train_environment = get_attr(kwargs, "train_environment", None)
         self.valid_environment = get_attr(kwargs, "valid_environment", None)
@@ -29,7 +31,7 @@ class AlgorithmicTradingTrainer(Trainer):
 
         self.work_dir = get_attr(kwargs, "work_dir", None)
         self.work_dir = os.path.join(ROOT, self.work_dir)
-        self.seeds_list = get_attr(kwargs, "seeds_list", (12345,))
+        self.seeds_list = get_attr(kwargs, "seeds_list", (12345, ))
         self.random_seed = random.choice(self.seeds_list)
 
         self.num_threads = int(get_attr(kwargs, "num_threads", 8))
@@ -75,10 +77,11 @@ class AlgorithmicTradingTrainer(Trainer):
         torch.backends.cudnn.deterministic = True
         torch.set_num_threads(self.num_threads)
         torch.set_default_dtype(torch.float32)
-
         '''remove history'''
         if self.if_remove is None:
-            self.if_remove = bool(input(f"| Arguments PRESS 'y' to REMOVE: {self.work_dir}? ") == 'y')
+            self.if_remove = bool(
+                input(f"| Arguments PRESS 'y' to REMOVE: {self.work_dir}? ") ==
+                'y')
         if self.if_remove:
             import shutil
             shutil.rmtree(self.work_dir, ignore_errors=True)
@@ -92,13 +95,14 @@ class AlgorithmicTradingTrainer(Trainer):
             os.makedirs(self.checkpoints_path, exist_ok=True)
 
     def train_and_valid(self):
-
         '''init agent.last_state'''
         state = self.train_environment.reset()
         if self.num_envs == 1:
-            assert state.shape == (self.state_dim,)
+            assert state.shape == (self.state_dim, )
             assert isinstance(state, np.ndarray)
-            state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+            state = torch.tensor(state,
+                                 dtype=torch.float32,
+                                 device=self.device).unsqueeze(0)
         else:
             assert state.shape == (self.num_envs, self.state_dim)
             assert isinstance(state, torch.Tensor)
@@ -106,7 +110,6 @@ class AlgorithmicTradingTrainer(Trainer):
         assert state.shape == (self.num_envs, self.state_dim)
         assert isinstance(state, torch.Tensor)
         self.agent.last_state = state.detach()
-
         '''init buffer'''
         if self.if_off_policy:
             buffer = GeneralReplayBuffer(
@@ -144,12 +147,14 @@ class AlgorithmicTradingTrainer(Trainer):
                     tensor_action = self.agent.get_action(tensor_state)
                     if self.if_discrete:
                         tensor_action = tensor_action.argmax(dim=1)
-                    action = tensor_action.detach().cpu().numpy()[
-                        0]  # not need detach(), because using torch.no_grad() outside
-                    state, reward, done, _ = self.valid_environment.step(action)
+                    action = tensor_action.detach().cpu().numpy(
+                    )[0]  # not need detach(), because using torch.no_grad() outside
+                    state, reward, done, _ = self.valid_environment.step(
+                        action)
                     episode_reward_sum += reward
                     if done:
-                        print("Valid Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                        print("Valid Episode Reward Sum: {:04f}".format(
+                            episode_reward_sum))
                         break
                 valid_score_list.append(episode_reward_sum)
 
@@ -164,22 +169,24 @@ class AlgorithmicTradingTrainer(Trainer):
                 break
 
         max_index = np.argmax(valid_score_list)
-        save_best_model(
-            output_dir=self.checkpoints_path,
-            epoch=max_index + 1,
-            save=self.agent.get_save()
-        )
+        save_best_model(output_dir=self.checkpoints_path,
+                        epoch=max_index + 1,
+                        save=self.agent.get_save())
 
     def test(self):
 
-        load_best_model(self.checkpoints_path, save=self.agent.get_save(), is_train=False)
+        load_best_model(self.checkpoints_path,
+                        save=self.agent.get_save(),
+                        is_train=False)
 
         print("Test Best Episode")
         state = self.test_environment.reset()
 
         episode_reward_sum = 0
         while True:
-            tensor_state = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+            tensor_state = torch.as_tensor(state,
+                                           dtype=torch.float32,
+                                           device=self.device).unsqueeze(0)
             tensor_action = self.agent.act(tensor_state)
             if self.if_discrete:
                 tensor_action = tensor_action.argmax(dim=1)
@@ -188,7 +195,8 @@ class AlgorithmicTradingTrainer(Trainer):
             state, reward, done, _ = self.test_environment.step(action)
             episode_reward_sum += reward
             if done:
-                print("Test Best Episode Reward Sum: {:04f}".format(episode_reward_sum))
+                print("Test Best Episode Reward Sum: {:04f}".format(
+                    episode_reward_sum))
                 break
 
         rewards = self.test_environment.save_asset_memory()
