@@ -61,7 +61,7 @@ def test_dqn():
     test_environment = build_environment(
         cfg, default_args=dict(dataset=dataset, task="test")
     )
-    cfg.environment = cfg.train_enviroment
+    cfg.environment = cfg.train_environment
     train_environment = build_environment(
         cfg, default_args=dict(dataset=dataset, task="train")
     )
