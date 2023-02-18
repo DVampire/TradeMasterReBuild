@@ -100,8 +100,10 @@ data = dict(
     max_punish=1e12,
     episode_length=14400,
 )
+
 environment = dict(type="HighFrequencyTradingEnvironment")
 train_environment = dict(type="HighFrequencyTradingTrainingEnvironment")
+
 agent = dict(
     type="HighFrequencyTradingDDQN",
     auxiliary_coffient=512,
@@ -129,8 +131,7 @@ trainer = dict(
     if_over_write=False,
     if_save_buffer=False,
 )
-loss = dict(type="MSELoss")
-auxloss = dict(type="KLloss")
+loss = dict(type="HFTLoss")
 optimizer = dict(type="Adam", lr=0.001)
 act = dict(type="HFTQNet", state_dim=66, action_dim=11, dims=16, explore_rate=0.25)
 cri = None

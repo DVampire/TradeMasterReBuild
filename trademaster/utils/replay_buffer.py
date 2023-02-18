@@ -3,7 +3,8 @@ import torch
 import numpy as np
 import numpy.random as rd
 from torch import Tensor
-
+from collections import deque, namedtuple
+import random
 class ReplayBuffer:  # for off-policy, vectorized env
     def __init__(self,
                  max_size: int,
@@ -33,8 +34,7 @@ class ReplayBuffer:  # for off-policy, vectorized env
         if if_use_per:
             self.per_tree = BinarySearchTree(max_size * num_envs)
             self.sample = self.sample_per
-
-    def update(self, items: [Tensor]):
+    def update(self, items: list):
         self.add_item = items
         states, actions, rewards, undones = items
         assert states.shape[1:] == (self.num_envs, self.state_dim)
@@ -64,7 +64,7 @@ class ReplayBuffer:  # for off-policy, vectorized env
         self.p = p
         self.cur_size = self.max_size if self.if_full else self.p
 
-    def sample(self, batch_size: int) -> (Tensor, Tensor, Tensor, Tensor, Tensor):
+    def sample(self, batch_size: int) -> list:
         sample_len = self.cur_size - 1
 
         ids = torch.randint(sample_len * self.num_envs, size=(batch_size,), requires_grad=False)
@@ -77,7 +77,7 @@ class ReplayBuffer:  # for off-policy, vectorized env
                 self.undones[ids0, ids1],
                 self.states[ids0 + 1, ids1],)  # next_state
 
-    def sample_per(self, batch_size: int) -> (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor):
+    def sample_per(self, batch_size: int) -> list:
         beg = -self.max_size
         end = (self.cur_size - self.max_size) if (self.cur_size < self.max_size) else -1
 
@@ -224,3 +224,116 @@ class BinarySearchTree:
         prob = td_error.squeeze().clamp(1e-6, 10).pow(self.per_alpha)
         prob = prob.cpu().numpy()
         self.update_ids(self.indices, prob)
+        
+        
+#TODO 目前自己独有的replaybuffer 不具有horizon length 但是可以存储info 
+class ReplayBufferHFT:  # for off-policy, vectorized env, containing info from the env
+    def __init__(self,
+                 buffer_size:int,
+                 batch_size:int,
+                 device:torch.device,
+                 seed,
+                 gamma,
+                 n_step,
+                 parallel_env=1):
+        """Initialize a ReplayBuffer object.
+        Params
+        ======
+            buffer_size (int): maximum size of buffer
+            batch_size (int): size of each training batch
+            seed (int): random seed
+        """
+        self.buffer_size = buffer_size
+        self.device = device
+        self.memory = deque(maxlen=buffer_size)
+        self.batch_size = batch_size
+        self.experience = namedtuple("Experience",
+                                     field_names=[
+                                         "state", "info", "action", "reward",
+                                         "next_state", "done", "next_info"
+                                     ])
+        self.seed = random.seed(seed)
+        self.gamma = gamma
+        self.n_step = n_step
+        self.parallel_env = parallel_env
+        self.n_step_buffer = [
+            deque(maxlen=self.n_step) for i in range(parallel_env)
+        ]
+        self.iter_ = 0
+
+    def add(
+        self,
+        state,
+        info: dict,
+        action,
+        reward,
+        next_state,
+        next_info: dict,
+        done,
+    ):
+        """Add a new experience to memory."""
+        # if we want to have multi core
+        if self.iter_ == self.parallel_env:
+            self.iter_ = 0
+        self.n_step_buffer[self.iter_].append(
+            (state, info, action, reward, next_state, next_info, done))
+
+        if len(self.n_step_buffer[self.iter_]) == self.n_step:
+            state, info, action, reward, next_state, next_info, done = self.calc_multistep_return(
+                self.n_step_buffer[self.iter_])
+            e = self.experience(state, info, action, reward, next_state, done,
+                                next_info)
+            self.memory.append(e)
+        self.iter_ += 1
+
+    def reset(self):
+        self.memory = deque(maxlen=self.buffer_size)
+
+    def calc_multistep_return(self, n_step_buffer):
+        Return = 0
+        for idx in range(self.n_step):
+            Return += self.gamma**idx * n_step_buffer[idx][3]
+        self.info_key = n_step_buffer[0][5].keys()
+
+        return n_step_buffer[0][0], n_step_buffer[0][1], n_step_buffer[0][
+            2], Return, n_step_buffer[-1][4], n_step_buffer[-1][
+                5], n_step_buffer[0][6]
+
+    def sample(self):
+        """Randomly sample a batch of experiences from memory."""
+        experiences = random.sample(self.memory, k=self.batch_size)
+
+        states = torch.from_numpy(
+            np.stack([e.state for e in experiences
+                      if e is not None])).float().to(self.device)
+        infos = dict()
+        for key in self.info_key:
+            infos[key] = torch.from_numpy(
+                np.stack([e.info[key] for e in experiences if e is not None
+                          ]).astype(np.uint8)).float().to(self.device)
+        actions = torch.from_numpy(
+            np.vstack([e.action for e in experiences
+                       if e is not None])).long().to(self.device)
+        rewards = torch.from_numpy(
+            np.vstack([e.reward for e in experiences
+                       if e is not None])).float().to(self.device)
+        next_states = torch.from_numpy(
+            np.stack([e.next_state for e in experiences
+                      if e is not None])).float().to(self.device)
+        next_infos = dict()
+        for key in self.info_key:
+            next_infos[key] = torch.from_numpy(
+                np.stack([
+                    e.next_info[key] for e in experiences if e is not None
+                ]).astype(np.uint8)).float().to(self.device)
+        dones = torch.from_numpy(
+            np.vstack([e.done for e in experiences if e is not None
+                       ]).astype(np.uint8)).float().to(self.device)
+
+        return (states, infos, actions, rewards, next_states, next_infos,
+                dones)
+
+    def __len__(self):
+        """Return the current size of internal memory."""
+        return len(self.memory)
+
