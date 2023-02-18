@@ -20,8 +20,7 @@ class PortfolioManagementEIIE(AgentBase):
     def __init__(self, **kwargs):
         super(PortfolioManagementEIIE, self).__init__()
 
-        self.num_envs = int(
-            get_attr(kwargs, "num_envs", 1))  # the number of sub envs in vectorized env. `num_envs=1` in single env.
+        self.num_envs = int(get_attr(kwargs, "num_envs", 1))
         self.device = get_attr(kwargs, "device", torch.device(f"cuda:0" if torch.cuda.is_available() else "cpu"))
         self.max_step = get_attr(kwargs, "max_step",
                                  12345)  # the max step number of an episode. 'set as 12345 in default.

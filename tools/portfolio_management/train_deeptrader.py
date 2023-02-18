@@ -19,6 +19,7 @@ from trademaster.agents.builder import build_agent
 from trademaster.optimizers.builder import build_optimizer
 from trademaster.losses.builder import build_loss
 from trademaster.trainers.builder import build_trainer
+from trademaster.transition.builder import build_transition
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Download Alpaca Datasets')
@@ -54,19 +55,17 @@ def test_deeptrader():
             test_style_environments.append(build_environment(cfg, default_args=dict(dataset=dataset, task="test_style",
                                                                                     style_test_path=path,
                                                                                     task_index=i)))
-    n_action = train_environment.action_space.shape[0]
-    n_state = train_environment.observation_space.shape[0]
-    N = train_environment.stock_dim
-    K_l = train_environment.length_day
-    num_inputs = len(train_environment.tech_indicator_list)
+    action_dim = train_environment.action_dim
+    state_dim = train_environment.state_dim
+    time_steps = train_environment.timesteps
 
-    cfg.act_net.update(dict(N=N, K_l=K_l, num_inputs = num_inputs))
-    cfg.cri_net.update(dict(N=N, K_l=K_l, num_inputs = num_inputs))
-    cfg.market_net.update(dict(n_features = num_inputs))
+    cfg.act.update(dict(N=action_dim, K_l=time_steps, num_inputs = state_dim))
+    cfg.cri.update(dict(N=action_dim, K_l=time_steps, num_inputs = state_dim))
+    cfg.market.update(dict(n_features = state_dim))
 
-    act_net = build_net(cfg.act_net)
-    cri_net = build_net(cfg.cri_net)
-    market_net = build_net(cfg.market_net)
+    act = build_net(cfg.act)
+    cri = build_net(cfg.cri)
+    market = build_net(cfg.market)
 
     work_dir = os.path.join(ROOT, cfg.trainer.work_dir)
 
@@ -74,21 +73,25 @@ def test_deeptrader():
         os.makedirs(work_dir)
     cfg.dump(osp.join(work_dir, osp.basename(args.config)))
 
-    act_optimizer = build_optimizer(cfg, default_args=dict(params=act_net.parameters()))
-    cri_optimizer = build_optimizer(cfg, default_args=dict(params=cri_net.parameters()))
-    market_optimizer = build_optimizer(cfg, default_args=dict(params=market_net.parameters()))
-    loss = build_loss(cfg)
+    act_optimizer = build_optimizer(cfg, default_args=dict(params=act.parameters()))
+    cri_optimizer = build_optimizer(cfg, default_args=dict(params=cri.parameters()))
+    market_optimizer = build_optimizer(cfg, default_args=dict(params=market.parameters()))
 
-    agent = build_agent(cfg, default_args=dict(n_action=n_action,
-                                               n_state=n_state,
-                                               act_net=act_net,
-                                               cri_net=cri_net,
-                                               market_net = market_net,
+    criterion = build_loss(cfg)
+
+    transition = build_transition(cfg)
+
+    agent = build_agent(cfg, default_args=dict(action_dim=action_dim,
+                                               state_dim=state_dim,
+                                               act=act,
+                                               cri=cri,
+                                               market = market,
                                                act_optimizer=act_optimizer,
                                                cri_optimizer = cri_optimizer,
                                                market_optimizer = market_optimizer,
-                                               loss=loss,
-                                               device = device))
+                                               criterion=criterion,
+                                               transition=transition,
+                                               device=device))
 
     if task_name.startswith("style_test"):
         trainers = []

@@ -31,10 +31,8 @@ class AlgorithmicTradingEnvironment(Environments):
             self.df_path = get_attr(self.dataset, "test_path", None)
 
         self.initial_amount = get_attr(self.dataset, "initial_amount", 100000)
-        self.transaction_cost_pct = get_attr(self.dataset,
-                                             "transaction_cost_pct", 0.001)
-        self.tech_indicator_list = get_attr(self.dataset,
-                                            "tech_indicator_list", [])
+        self.transaction_cost_pct = get_attr(self.dataset, "transaction_cost_pct", 0.001)
+        self.tech_indicator_list = get_attr(self.dataset, "tech_indicator_list", [])
         self.forward_num_day = get_attr(self.dataset, "forward_num_day", [])
         self.backward_num_day = get_attr(self.dataset, "backward_num_day", [])
         self.max_volume = get_attr(self.dataset, "max_volume", 1)
@@ -51,7 +49,7 @@ class AlgorithmicTradingEnvironment(Environments):
             low=-np.inf,
             high=np.inf,
             shape=(len(self.tech_indicator_list) * self.backward_num_day +
-                   2, ),
+                   2,),
         )
 
         self.action_dim = self.action_space.n
@@ -105,14 +103,16 @@ class AlgorithmicTradingEnvironment(Environments):
             self.df.index.unique()) - self.forward_num_day - 1
         if self.terminal:
             tr, sharpe_ratio, vol, mdd, cr, sor = self.analysis_result()
-            stats = OrderedDict({
-                "Profit Margin": ["{:04f}%".format(tr * 100)],
-                "Sharp Ratio": ["{:04f}".format(sharpe_ratio)],
-                "Volatility": ["{:04f}".format(vol)],
-                "Max Drawdown": ["{:04f}".format(mdd)],
-                "Calmar Ratio": ["{:04f}".format(cr)],
-                "Sortino Ratio": ["{:04f}".format(sor)],
-            })
+            stats = OrderedDict(
+                {
+                    "Profit Margin": ["{:04f}%".format(tr * 100)],
+                    "Sharp Ratio": ["{:04f}".format(sharpe_ratio)],
+                    "Volatility": ["{:04f}".format(vol)],
+                    "Max Drawdown": ["{:04f}".format(mdd)],
+                    "Calmar Ratio": ["{:04f}".format(cr)],
+                    "Sortino Ratio": ["{:04f}".format(sor)],
+                }
+            )
             table = print_metrics(stats)
             print(table)
             return self.state, self.reward, self.terminal, {
@@ -127,17 +127,17 @@ class AlgorithmicTradingEnvironment(Environments):
                 # 我们卖出了一些比特币 并获得了一些额外的现金 没有支付不起手续费的情况
                 cash = self.compound_memory[-1][0] + np.abs(
                     cash_variation_number) * self.data.iloc[-1, :].close * (
-                        1 - self.transaction_cost_pct)
+                               1 - self.transaction_cost_pct)
                 hold_volume = hold_volume
             else:
                 # 如果我们要放更多的钱到比特币手里 无论是买空还是卖空, 现金将会减少 会出现买不起的情况
                 if self.compound_memory[-1][0] > np.abs(
                         buy_volume) * self.data.iloc[-1, :].close / (
-                            1 - self.transaction_cost_pct):
+                        1 - self.transaction_cost_pct):
                     # 如果手里的现金足够我们支付买卖比特币的费用外加手续费
                     cash = self.compound_memory[-1][0] - np.abs(
                         buy_volume) * self.data.iloc[-1, :].close / (
-                            1 - self.transaction_cost_pct)
+                                   1 - self.transaction_cost_pct)
                     hold_volume = hold_volume
                 else:
                     # 如果没有足够的现金支持
@@ -149,7 +149,7 @@ class AlgorithmicTradingEnvironment(Environments):
                     hold_volume = self.compound_memory[-1][1] + buy_volume
                     cash = self.compound_memory[-1][0] - np.abs(
                         buy_volume) * self.data.iloc[-1, :].close / (
-                            1 - self.transaction_cost_pct)
+                                   1 - self.transaction_cost_pct)
             compound = [cash, hold_volume]
             self.compound_memory.append(compound)
             old_price = self.data.iloc[-1, :].close
@@ -163,8 +163,8 @@ class AlgorithmicTradingEnvironment(Environments):
                                        2].close
             # 计算reward 经过一天 价格发生变化 并提却更遥远的未来做估值打算
             self.reward = compound[1] * (
-                (new_price - old_price) + self.future_weights *
-                (newer_price - old_price))
+                    (new_price - old_price) + self.future_weights *
+                    (newer_price - old_price))
             self.state = [
                 self.data[tech].values.tolist()
                 for tech in self.tech_indicator_list
@@ -177,7 +177,7 @@ class AlgorithmicTradingEnvironment(Environments):
             self.portfolio_value = compound[0] + compound[1] * (new_price)
             self.asset_memory.append(self.portfolio_value)
             self.future_data = self.df.iloc[self.day - 1:self.day +
-                                            self.forward_num_day, :]
+                                                         self.forward_num_day, :]
             self.date_memory.append(self.data.date.unique()[-1])
             close_price_list = self.future_data.close.tolist()
             labels = []
@@ -232,20 +232,10 @@ class AlgorithmicTradingEnvironment(Environments):
     def evaualte(self, df):
         daily_return = df["daily_return"]
         neg_ret_lst = df[df["daily_return"] < 0]["daily_return"]
-        tr = df["total assets"].values[-1] / (df["total assets"].values[0] +
-                                              1e-10) - 1
-        sharpe_ratio = np.mean(daily_return) / (np.std(daily_return) *
-                                                (len(df)**0.5) + 1e-10)
+        tr = df["total assets"].values[-1] / (df["total assets"].values[0] + 1e-10) - 1
+        sharpe_ratio = np.mean(daily_return) / (np.std(daily_return) * (len(df) ** 0.5) + 1e-10)
         vol = np.std(daily_return)
-        mdd = 0
-        peak = df["total assets"][0]
-        for value in df["total assets"]:
-            if value > peak:
-                peak = value
-            dd = (peak - value) / (peak + 1e-10)
-            if dd > mdd:
-                mdd = dd
+        mdd = max((max(df["total assets"]) - df["total assets"]) / (max(df["total assets"])) + 1e-10)
         cr = np.sum(daily_return) / (mdd + 1e-10)
-        sor = np.sum(daily_return) / (np.std(neg_ret_lst) + 1e-10) / (
-            np.sqrt(len(daily_return)) + 1e-10)
+        sor = np.sum(daily_return) / (np.std(neg_ret_lst) + 1e-10) / (np.sqrt(len(daily_return))+1e-10)
         return tr, sharpe_ratio, vol, mdd, cr, sor

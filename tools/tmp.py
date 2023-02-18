@@ -174,8 +174,13 @@ def process5():
     data.to_csv(os.path.join(data_path, "data.csv"))
 
 if __name__=="__main__":
-    process1()
-    process2()
-    process3()
-    process4()
-    process5()
+    # process1()
+    # process2()
+    # process3()
+    # process4()
+    # process5()
+    import numpy as np
+
+    data = np.load("industry_classification.npy")
+    print(data.shape)
+    print(data)

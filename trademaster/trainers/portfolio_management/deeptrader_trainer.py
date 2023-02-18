@@ -6,10 +6,13 @@ import torch
 ROOT = Path(__file__).resolve().parents[3]
 from ..custom import Trainer
 from ..builder import TRAINERS
-from trademaster.utils import get_attr, save_model, save_best_model, load_model, load_best_model
+from trademaster.utils import get_attr, \
+    save_model, save_best_model, load_model, \
+    load_best_model, GeneralReplayBuffer
 import numpy as np
 import os
 import pandas as pd
+from collections import OrderedDict
 
 
 def make_market_information(df, technical_indicator):
@@ -48,23 +51,12 @@ def make_correlation_information(df: pd.DataFrame, feature="adjclose"):
     dfcc = dfcc.values
     return dfcc
 
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.benckmark = False
-    torch.backends.cudnn.deterministic = True
-
-
 @TRAINERS.register_module()
 class PortfolioManagementDeepTraderTrainer(Trainer):
     def __init__(self, **kwargs):
         super(PortfolioManagementDeepTraderTrainer, self).__init__()
 
-        self.kwargs = kwargs
+        self.num_envs = int(get_attr(kwargs, "num_envs", 1))
         self.device = get_attr(kwargs, "device", None)
 
         self.epochs = get_attr(kwargs, "epochs", 20)
@@ -74,10 +66,53 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
         self.agent = get_attr(kwargs, "agent", None)
         self.work_dir = get_attr(kwargs, "work_dir", None)
         self.work_dir = os.path.join(ROOT, self.work_dir)
+
         self.seeds_list = get_attr(kwargs, "seeds_list", (12345,))
         self.random_seed = random.choice(self.seeds_list)
+
         self.num_threads = int(get_attr(kwargs, "num_threads", 8))
+
         self.if_remove = get_attr(kwargs, "if_remove", False)
+        self.if_discrete = get_attr(kwargs, "if_discrete", False)
+        self.if_off_policy = get_attr(kwargs, "if_off_policy", True)
+        self.if_keep_save = get_attr(kwargs, "if_keep_save", True)
+        self.if_over_write = get_attr(kwargs, "if_over_write", False)
+        self.if_save_buffer = get_attr(kwargs, "if_save_buffer", False)
+
+        if self.if_off_policy:  # off-policy
+            self.batch_size = int(get_attr(kwargs, "batch_size", 64))
+            self.horizon_len = int(get_attr(kwargs, "horizon_len", 512))
+            self.buffer_size = int(get_attr(kwargs, "buffer_size", 1000))
+        else:  # on-policy
+            self.batch_size = int(get_attr(kwargs, "batch_size", 128))
+            self.horizon_len = int(get_attr(kwargs, "horizon_len", 512))
+            self.buffer_size = int(get_attr(kwargs, "buffer_size", 128))
+        self.epochs = int(get_attr(kwargs, "epochs", 20))
+
+        self.state_dim = self.agent.state_dim
+        self.action_dim = self.agent.action_dim
+        self.time_steps = self.agent.time_steps
+        self.transition = self.agent.transition
+
+        self.transition_shapes = OrderedDict({
+            'state': (self.buffer_size, self.num_envs,
+                      self.action_dim,self.state_dim,
+                      self.time_steps),
+            'action': (self.buffer_size, self.num_envs, self.action_dim),
+            'reward': (self.buffer_size, self.num_envs),
+            'undone': (self.buffer_size, self.num_envs),
+            'next_state': (self.buffer_size, self.num_envs,
+                           self.action_dim, self.state_dim,
+                           self.time_steps),
+            'correlation_matrix': (self.buffer_size, self.num_envs,
+                                   self.action_dim, self.action_dim),
+            'next_correlation_matrix': (self.buffer_size, self.num_envs,
+                                        self.action_dim, self.action_dim),
+            'state_market': (self.buffer_size, self.num_envs, self.time_steps, self.state_dim),
+            'roh_bar_market':(self.buffer_size, self.num_envs),
+        })
+
+        self.init_before_training()
 
     def init_before_training(self):
         random.seed(self.random_seed)
@@ -106,6 +141,34 @@ class PortfolioManagementDeepTraderTrainer(Trainer):
             os.makedirs(self.checkpoints_path, exist_ok=True)
 
     def train_and_valid(self):
+
+        '''init agent.last_state'''
+        state = self.train_environment.reset()
+        if self.num_envs == 1:
+            assert state.shape == (self.action_dim, self.state_dim, self.time_steps)
+            assert isinstance(state, np.ndarray)
+            state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+        else:
+            assert state.shape == (self.num_envs, self.state_dim, self.time_steps)
+            assert isinstance(state, torch.Tensor)
+            state = state.to(self.device)
+        assert state.shape == (self.num_envs, self.action_dim, self.state_dim, self.time_steps)
+        assert isinstance(state, torch.Tensor)
+        self.agent.last_state = state.detach()
+
+        '''init buffer'''
+        if self.if_off_policy:
+            buffer = GeneralReplayBuffer(
+                transition=self.transition,
+                shapes=self.transition_shapes,
+                num_seqs=self.num_envs,
+                max_size=self.buffer_size,
+                device=self.device,
+            )
+            buffer_items = self.agent.explore_env(self.train_environment, self.horizon_len)
+            buffer.update(buffer_items)
+        else:
+            buffer = []
 
         valid_score_list = []
         for epoch in range(1, self.epochs+1):

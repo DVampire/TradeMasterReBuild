@@ -14,7 +14,6 @@ from trademaster.pretrained import pretrained
 from gym import spaces
 from collections import OrderedDict
 
-
 @ENVIRONMENTS.register_module()
 class PortfolioManagementSARLEnvironment(Environments):
     def __init__(self, config):
@@ -32,9 +31,7 @@ class PortfolioManagementSARLEnvironment(Environments):
             self.df_path = get_attr(self.dataset, "test_path", None)
 
         self.initial_amount = get_attr(self.dataset, "initial_amount", 100000)
-        self.transaction_cost_pct = get_attr(
-            self.dataset, "transaction_cost_pct", 0.001
-        )
+        self.transaction_cost_pct = get_attr(self.dataset, "transaction_cost_pct", 0.001)
         self.tech_indicator_list = get_attr(self.dataset, "tech_indicator_list", [])
 
         if self.task.startswith("test_style"):
@@ -50,41 +47,34 @@ class PortfolioManagementSARLEnvironment(Environments):
 
         ##############################################################
         from trademaster.nets import mLSTMClf
-
         self.network_dict = torch.load(get_attr(pretrained, "sarl_encoder", None))
-        self.net = mLSTMClf(
-            n_features=len(self.tech_indicator_list),
-            layer_num=1,
-            n_hidden=128,
-            tic_number=len(self.tic_list),
-        ).cuda()
+        self.net = mLSTMClf(n_features = len(self.tech_indicator_list), layer_num = 1, n_hidden = 128, tic_number = len(self.tic_list)).cuda()
         self.net.load_state_dict(self.network_dict)
         ##############################################################
 
-        self.action_space = spaces.Box(low=-5, high=5, shape=(self.action_space_shape,))
+        self.action_space = spaces.Box(low=-5,
+                                       high=5,
+                                       shape=(self.action_space_shape,))
 
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=((len(self.tech_indicator_list) + 1) * self.state_space_shape,),
-        )
+            shape=((len(self.tech_indicator_list) + 1) *
+                   self.state_space_shape,))
 
         self.data = self.df.loc[self.day, :]
         tic_list = list(self.data.tic)
-        s_market = (
-            np.array(
-                [self.data[tech].values.tolist() for tech in self.tech_indicator_list]
-            )
-            .reshape(-1)
-            .tolist()
-        )
+        s_market = np.array([
+            self.data[tech].values.tolist()
+            for tech in self.tech_indicator_list
+        ]).reshape(-1).tolist()
         X = []
         for tic in tic_list:
             df_tic = self.df[self.df.tic == tic]
-            df_information = df_tic[self.day - self.length_day : self.day][
-                self.tech_indicator_list
-            ].to_numpy()
-            df_information = torch.from_numpy(df_information).float().unsqueeze(0)
+            df_information = df_tic[self.day - self.length_day:self.day][
+                self.tech_indicator_list].to_numpy()
+            df_information = torch.from_numpy(
+                df_information).float().unsqueeze(0)
             X.append(df_information)
         X = torch.cat(X, dim=0)
         X = X.unsqueeze(0).cuda()
@@ -96,7 +86,8 @@ class PortfolioManagementSARLEnvironment(Environments):
         self.portfolio_value = self.initial_amount
         self.asset_memory = [self.initial_amount]
         self.portfolio_return_memory = [0]
-        self.weights_memory = [[1 / self.action_space_shape] * self.action_space_shape]
+        self.weights_memory = [[1 / self.action_space_shape] *
+                               self.action_space_shape]
         self.date_memory = [self.data.date.unique()[0]]
         self.transaction_cost_memory = []
 
@@ -106,20 +97,17 @@ class PortfolioManagementSARLEnvironment(Environments):
         self.data = self.df.loc[self.day, :]
 
         tic_list = list(self.data.tic)
-        s_market = (
-            np.array(
-                [self.data[tech].values.tolist() for tech in self.tech_indicator_list]
-            )
-            .reshape(-1)
-            .tolist()
-        )
+        s_market = np.array([
+            self.data[tech].values.tolist()
+            for tech in self.tech_indicator_list
+        ]).reshape(-1).tolist()
         X = []
         for tic in tic_list:
             df_tic = self.df[self.df.tic == tic]
-            df_information = df_tic[self.day - self.length_day : self.day][
-                self.tech_indicator_list
-            ].to_numpy()
-            df_information = torch.from_numpy(df_information).float().unsqueeze(0)
+            df_information = df_tic[self.day - self.length_day:self.day][
+                self.tech_indicator_list].to_numpy()
+            df_information = torch.from_numpy(
+                df_information).float().unsqueeze(0)
             X.append(df_information)
         X = torch.cat(X, dim=0)
         X = X.unsqueeze(0).cuda()
@@ -130,7 +118,8 @@ class PortfolioManagementSARLEnvironment(Environments):
         self.portfolio_value = self.initial_amount
         self.asset_memory = [self.initial_amount]
         self.portfolio_return_memory = [0]
-        self.weights_memory = [[1 / self.action_space_shape] * self.action_space_shape]
+        self.weights_memory = [[1 / self.action_space_shape] *
+                               self.action_space_shape]
         self.date_memory = [self.data.date.unique()[0]]
         self.transaction_cost_memory = []
         return self.state
@@ -154,12 +143,9 @@ class PortfolioManagementSARLEnvironment(Environments):
             )
             table = print_metrics(stats)
             print(table)
-            return (
-                self.state,
-                self.reward,
-                self.terminal,
-                {"sharpe_ratio": sharpe_ratio},
-            )
+            return self.state, self.reward, self.terminal, {
+                "sharpe_ratio": sharpe_ratio
+            }
         else:
             # transfer actino into portofolios weights
             weights = self.softmax(actions)
@@ -171,23 +157,17 @@ class PortfolioManagementSARLEnvironment(Environments):
             self.data = self.df.loc[self.day, :]
             # get the state
             tic_list = list(self.data.tic)
-            s_market = (
-                np.array(
-                    [
-                        self.data[tech].values.tolist()
-                        for tech in self.tech_indicator_list
-                    ]
-                )
-                .reshape(-1)
-                .tolist()
-            )
+            s_market = np.array([
+                self.data[tech].values.tolist()
+                for tech in self.tech_indicator_list
+            ]).reshape(-1).tolist()
             X = []
             for tic in tic_list:
                 df_tic = self.df[self.df.tic == tic]
-                df_information = df_tic[self.day - self.length_day : self.day][
-                    self.tech_indicator_list
-                ].to_numpy()
-                df_information = torch.from_numpy(df_information).float().unsqueeze(0)
+                df_information = df_tic[self.day - self.length_day:self.day][
+                    self.tech_indicator_list].to_numpy()
+                df_information = torch.from_numpy(
+                    df_information).float().unsqueeze(0)
                 X.append(df_information)
             X = torch.cat(X, dim=0)
             X = X.unsqueeze(0).cuda()
@@ -199,34 +179,26 @@ class PortfolioManagementSARLEnvironment(Environments):
             # the weights when the action is first posed)
             portfolio_weights = weights[1:]
             portfolio_return = sum(
-                ((self.data.close.values / last_day_memory.close.values) - 1)
-                * portfolio_weights
-            )
-            weights_brandnew = self.normalization(
-                [weights[0]]
-                + list(
-                    np.array(weights[1:])
-                    * np.array((self.data.close.values / last_day_memory.close.values))
-                )
-            )
+                ((self.data.close.values / last_day_memory.close.values) - 1) *
+                portfolio_weights)
+            weights_brandnew = self.normalization([weights[0]] + list(
+                np.array(weights[1:]) * np.array(
+                    (self.data.close.values / last_day_memory.close.values))))
             self.weights_memory.append(weights_brandnew)
 
             # caculate the transcation fee(there could exist an error of about 0.1% when calculating)
-            weights_old = self.weights_memory[-3]
-            weights_new = self.weights_memory[-2]
+            weights_old = (self.weights_memory[-3])
+            weights_new = (self.weights_memory[-2])
 
-            diff_weights = np.sum(np.abs(np.array(weights_old) - np.array(weights_new)))
-            transcationfee = (
-                diff_weights * self.transaction_cost_pct * self.portfolio_value
-            )
+            diff_weights = np.sum(
+                np.abs(np.array(weights_old) - np.array(weights_new)))
+            transcationfee = diff_weights * self.transaction_cost_pct * self.portfolio_value
 
             # calculate the overal result
-            new_portfolio_value = (self.portfolio_value - transcationfee) * (
-                1 + portfolio_return
-            )
-            portfolio_return = (
-                new_portfolio_value - self.portfolio_value
-            ) / self.portfolio_value
+            new_portfolio_value = (self.portfolio_value -
+                                   transcationfee) * (1 + portfolio_return)
+            portfolio_return = (new_portfolio_value -
+                                self.portfolio_value) / self.portfolio_value
             self.reward = new_portfolio_value - self.portfolio_value
             self.portfolio_value = new_portfolio_value
 
@@ -255,7 +227,7 @@ class PortfolioManagementSARLEnvironment(Environments):
         # a record of return for each time stamp
         date_list = self.date_memory
         df_date = pd.DataFrame(date_list)
-        df_date.columns = ["date"]
+        df_date.columns = ['date']
 
         return_list = self.portfolio_return_memory
         df_return = pd.DataFrame(return_list)
@@ -268,7 +240,7 @@ class PortfolioManagementSARLEnvironment(Environments):
         # a record of asset values for each time stamp
         date_list = self.date_memory
         df_date = pd.DataFrame(date_list)
-        df_date.columns = ["date"]
+        df_date.columns = ['date']
 
         assets_list = self.asset_memory
         df_value = pd.DataFrame(assets_list)
@@ -292,18 +264,9 @@ class PortfolioManagementSARLEnvironment(Environments):
         daily_return = df["daily_return"]
         neg_ret_lst = df[df["daily_return"] < 0]["daily_return"]
         tr = df["total assets"].values[-1] / (df["total assets"].values[0] + 1e-10) - 1
-        sharpe_ratio = np.mean(daily_return) / (
-            np.std(daily_return) * (len(df) ** 0.5) + 1e-10
-        )
+        sharpe_ratio = np.mean(daily_return) / (np.std(daily_return) * (len(df) ** 0.5) + 1e-10)
         vol = np.std(daily_return)
-        mdd = max(
-            (max(df["total assets"]) - df["total assets"]) / (max(df["total assets"]))
-            + 1e-10
-        )
+        mdd = max((max(df["total assets"]) - df["total assets"]) / (max(df["total assets"])) + 1e-10)
         cr = np.sum(daily_return) / (mdd + 1e-10)
-        sor = (
-            np.sum(daily_return)
-            / (np.std(neg_ret_lst) + 1e-10)
-            / (np.sqrt(len(daily_return)) + 1e-10)
-        )
+        sor = np.sum(daily_return) / (np.std(neg_ret_lst) + 1e-10) / (np.sqrt(len(daily_return))+1e-10)
         return tr, sharpe_ratio, vol, mdd, cr, sor

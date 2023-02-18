@@ -6,13 +6,9 @@ from .custom import Net
 from torch import Tensor
 from trademaster.utils import build_mlp
 
-
-
-
-
 @NETS.register_module()
 class QNet(Net):
-    def __init__(self, dims: list, state_dim: int, action_dim: int, explore_rate = 0.25):
+    def __init__(self, dims: [int], state_dim: int, action_dim: int, explore_rate = 0.25):
         super().__init__()
         self.net = build_mlp(dims=[state_dim, *dims, action_dim])
         self.explore_rate = explore_rate
@@ -36,5 +32,3 @@ class QNet(Net):
         if isinstance(m, nn.Linear):
             torch.nn.init.kaiming_uniform(m.weight)
             m.bias.data.zero_()
-            
-            
